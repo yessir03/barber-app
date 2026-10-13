@@ -16,7 +16,7 @@ const SUPABASE_KEY = 'sb_publishable_XbaV0qkXG-fyuK5Z8s4GVw_0os2X0VK';
 const Sync = (() => {
   const COLS = ['bookings', 'tx', 'services', 'staff'];   // lists merged record by record
   const SETTINGS = ['shop', 'hours', 'voiceReply'];        // merged as one block (newest wins)
-  const LIB = 'supabase.js';   // kept inside the app so it also loads with no internet
+  const LIB = 'supabase.js?v=2.117.3';   // kept inside the app so it also loads with no internet
 
   let client = null, user = null;
   let state = 'loading';        // loading | off | signedout | syncing | synced | offline | error
