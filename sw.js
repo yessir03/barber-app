@@ -1,7 +1,7 @@
 // Offline support: always ask the server for the newest files first (skipping the browser's
 // own short-term cache, so an update never shows up half old, half new), and fall back to
 // the saved copy when there's no signal.
-const CACHE = 'chairside-v2.0.1';
+const CACHE = 'chairside-v2.1.1';
 const FILES = ['./', './index.html', './manifest.json', './sync.js', './privacy.html', './supabase.js', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

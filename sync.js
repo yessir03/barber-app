@@ -21,7 +21,7 @@ const Sync = (() => {
   let client = null, user = null;
   let state = 'loading';        // loading | off | signedout | syncing | synced | offline | error
   let lastSync = 0, lastError = '';
-  let busy = false, again = false, debounce = null;
+  let busy = false, again = false, debounce = null, lastCheck = 0;
   let prev = {}, prevSettings = '';
 
   const configured = () => !!(SUPABASE_URL && SUPABASE_KEY);
@@ -101,9 +101,10 @@ const Sync = (() => {
     if (!client || !user) return;
     if (busy) { again = true; return; }
     busy = true; state = 'syncing'; refresh();
-    // Never upload sample data: a signed-in phone that still shows samples starts clean instead.
     try {
       if (!navigator.onLine) throw Object.assign(new Error('offline'), { offline: true });
+      // Every few minutes, ask the server whether this account still exists and isn't banned.
+      if (Date.now() - lastCheck > 3 * 60000) { if (await accountGone()) return; lastCheck = Date.now(); }
       const { data, error } = await client.from('shops').select('data').eq('owner', user.id).maybeSingle();
       if (error) throw error;
       const remote = data ? migrate(data.data) : null;
@@ -130,6 +131,8 @@ const Sync = (() => {
       }
       lastSync = Date.now(); lastError = ''; state = 'synced';
     } catch (e) {
+      // Write refused because the account was deleted (foreign key) or the sign-in is no longer valid.
+      if (!e.offline && (e.code === '23503' || e.code === 'PGRST301' || e.status === 401 || /jwt|not.?authori[sz]ed|user.*(not found|banned)/i.test(e.message || '')) && await accountGone(true)) return;
       state = e.offline || !navigator.onLine ? 'offline' : 'error';
       lastError = e.message || String(e);
       console.warn('Sync failed:', e);
@@ -196,6 +199,24 @@ const Sync = (() => {
     await client.auth.signOut(); user = null; state = 'signedout';
     // Remove the shop's data from this phone so the next person can't see it. It's all in the cloud.
     S = baseData(); snapshot(); writeLocal(); UI.tab = 'today'; UI.date = today(); render();
+  }
+  // True (and signs this phone out, wiping the shop from it) when the server says the account is gone or banned.
+  async function accountGone(force) {
+    let res;
+    try { res = await client.auth.getUser(); } catch (e) { return false; }
+    const err = res && res.error;
+    if (!err && res.data && res.data.user) return false;
+    // A network hiccup is not a reason to sign anyone out.
+    if (err && (err.status === 0 || /fetch|network|timeout|offline/i.test(err.name + ' ' + err.message))) return false;
+    if (!err && !force) return false;
+    await kick('This account is no longer active on Chairside. Please sign in again.');
+    return true;
+  }
+  async function kick(msg) {
+    try { await client.auth.signOut({ scope: 'local' }); } catch (e) {}
+    user = null; state = 'signedout'; busy = false;
+    S = baseData(); snapshot(); writeLocal(); UI.tab = 'today'; UI.date = today(); render();
+    setTimeout(() => showNote(msg), 50);
   }
   function showNote(msg) { const n = document.getElementById('loginNote'); if (n) { n.hidden = false; n.textContent = msg; } else toast(msg); }
 

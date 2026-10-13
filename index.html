@@ -253,7 +253,7 @@ const QUARTERS=Array.from({length:76},(_,i)=>fromMin(300+i*15));
 function staffCalc(st,ws){
   const we=addDays(ws,6);
   const done=S.bookings.filter(b=>b.status==='done'&&b.staffId===st.id&&b.date>=ws&&b.date<=we);
-  const rev=sum(done.map(b=>b.price));
+  const rev=sum(done.map(b=>b.price-(+b.refunded||0)));
   const comm=(st.pay==='commission'||st.pay==='both')?rev*(+st.rate||0)/100:0;
   const wage=(st.pay==='wage'||st.pay==='both')?(+st.wage||0):0;
   const payments=S.tx.filter(x=>x.staffId===st.id&&x.type==='out'&&x.date>=ws&&x.date<=we);
@@ -429,7 +429,7 @@ function saveBooking(id){
     if(!cl.length&&!inHours(toMin(time),data.dur)&&!confirm('This runs outside opening hours. Book anyway?'))return;}
   if(id){const b=S.bookings.find(b=>b.id===id);Object.assign(b,data);
     // Already paid? Keep the till entry in step with the booking.
-    const t=b.status==='done'&&S.tx.find(x=>x.bookingId===id);
+    const t=b.status==='done'&&S.tx.find(x=>x.bookingId===id&&x.kind!=='refund');
     if(t){t.amount=b.price;t.note=`${b.name} · ${svcName(b)}`;t.staffId=b.staffId;}}
   else S.bookings.push({id:uid(),status:'waiting',created:Date.now(),...data});
   UI.date=data.date;save();closeSheet();render();toast('Saved');}
@@ -437,8 +437,9 @@ function bookingDetail(id){
   const b=S.bookings.find(x=>x.id===id);if(!b)return;const st=staffById(b.staffId);
   const actions=b.status==='waiting'
     ?`<div class="grid2"><button class="btn green" data-act="pay" data-id="${id}" data-m="cash">Paid · Cash</button><button class="btn green" data-act="pay" data-id="${id}" data-m="card">Paid · Card</button></div><button class="btn ghost full" data-act="noshow" data-id="${id}" style="margin:0 0 12px">Mark no-show</button>`
-    :`<button class="btn ghost full" data-act="undo" data-id="${id}" style="margin:0 0 12px">Undo ${b.status==='done'?'payment':'no-show'}</button>`;
-  openSheet(`<h3>${esc(b.name)}</h3><div class="kv"><span>When</span><b>${b.walkin?'Walk-in':b.time+'–'+fromMin(toMin(b.time)+durOf(b))} · ${fmtDay(b.date)}</b><span>Service</span><b>${esc(svcName(b))}</b>${st&&S.staff.length>1?`<span>Barber</span><b>${esc(st.name)}</b>`:''}<span>Price</span><b>${eur(b.price)}</b>${b.status==='done'?`<span>Paid by</span><b>${b.paidBy}</b>`:''}${b.phone?`<span>Phone</span><b><a href="tel:${esc(b.phone)}">${esc(b.phone)}</a></b>`:''}</div>
+    :b.status==='done'?`<div class="grid2"><button class="btn ghost" data-act="refund" data-id="${id}">Refund</button><button class="btn ghost" data-act="undo" data-id="${id}">Undo payment</button></div>`
+    :`<button class="btn ghost full" data-act="undo" data-id="${id}" style="margin:0 0 12px">Undo no-show</button>`;
+  openSheet(`<h3>${esc(b.name)}</h3><div class="kv"><span>When</span><b>${b.walkin?'Walk-in':b.time+'–'+fromMin(toMin(b.time)+durOf(b))} · ${fmtDay(b.date)}</b><span>Service</span><b>${esc(svcName(b))}</b>${st&&S.staff.length>1?`<span>Barber</span><b>${esc(st.name)}</b>`:''}<span>Price</span><b>${eur(b.price)}</b>${b.status==='done'?`<span>Paid by</span><b>${b.paidBy}</b>`:''}${+b.refunded?`<span>Refunded</span><b class="red">${eur(b.refunded)}</b>`:''}${b.phone?`<span>Phone</span><b><a href="tel:${esc(b.phone)}">${esc(b.phone)}</a></b>`:''}</div>
   ${actions}<div class="grid2"><button class="btn ghost" data-act="editBooking" data-id="${id}">Edit</button><button class="btn ghost danger" data-act="delBooking" data-id="${id}">Delete</button></div>`);}
 function payBooking(id,m){
   const b=S.bookings.find(x=>x.id===id);if(!b||b.status==='done')return;
@@ -468,7 +469,7 @@ function viewTill(){
   ${UI.tillMode==='day'?`<div class="card"><div class="row"><span class="sub">Cash that should be in the drawer</span><b>${eur((float?float.amount:0)+cash-cashOut)}</b></div>
   <div class="row" style="margin-top:6px"><span class="sub">${float?`Started the day with ${eur(float.amount)}`:'Add the cash the drawer started with'}</span><button class="linkbtn" data-act="setFloat">${float?'Change':'Set start cash'}</button></div></div>`:''}
   <div class="grid2"><button class="btn green" data-act="moneyIn">+ Money in</button><button class="btn red" data-act="moneyOut">− Money out</button></div>
-  <div class="sec"><h2>Transactions</h2><div class="sub">${tx.length}</div></div>`;
+  <div class="sec"><h2>Transactions</h2><div class="sub">${tx.length}${tx.length||float?` · <button class="linkbtn" data-act="clearPeriod" style="padding:0">Clear this ${UI.tillMode}</button>`:''}</div></div>`;
   if(!tx.length)h+='<div class="card empty">Nothing recorded for this period.</div>';
   tx.forEach(x=>h+=`<div class="card rowc tx" data-act="openTx" data-id="${x.id}"><div class="ic ${x.type}">${x.type==='in'?'↓':'↑'}</div><div class="rm"><div class="nm">${esc(x.note||(x.type==='in'?'Money in':'Money out'))}</div><div class="sub">${UI.tillMode==='day'?'':fmtDay(x.date)+' · '}${x.time} · ${x.method}</div></div><div class="pr ${x.type==='in'?'green':'red'}">${x.type==='in'?'+':'−'}${eur(x.amount)}</div></div>`);
   return h;}
@@ -485,8 +486,64 @@ function floatForm(){
   <label>Amount (€)<input id="fl_amt" type="number" inputmode="decimal" min="0" step="0.5" value="${f?f.amount:''}"></label>
   <button class="btn full" data-act="saveFloat">Save</button>`);}
 function addTx(type,amount,method,note,kind,staffId){S.tx.push({id:uid(),date:today(),time:nowHM(),type,amount,method,note,kind,staffId});save();}
+const txKind=x=>x.kind==='refund'?'Refund':x.kind==='service'?'Customer payment':x.kind==='advance'?'Staff advance':x.kind==='wage'?'Staff pay':x.type==='in'?'Money in':'Money out';
 function txDetail(id){const x=S.tx.find(t=>t.id===id);if(!x)return;
-  openSheet(`<h3>${x.type==='in'?'Money in':'Money out'}</h3><div class="kv"><span>Amount</span><b>${eur(x.amount)}</b><span>For</span><b>${esc(x.note||'—')}</b><span>When</span><b>${fmtDay(x.date)} · ${x.time}</b><span>Method</span><b>${x.method}</b></div><button class="btn ghost danger full" data-act="delTx" data-id="${id}">Delete</button>`);}
+  openSheet(`<h3>${txKind(x)}</h3><div class="kv"><span>Amount</span><b class="${x.type==='in'?'green':'red'}">${x.type==='in'?'+':'−'}${eur(x.amount)}</b><span>For</span><b>${esc(x.note||'—')}</b><span>When</span><b>${fmtDay(x.date)} · ${x.time}</b><span>Method</span><b>${x.method}</b></div>
+  <div class="grid2" style="margin:0"><button class="btn ghost" data-act="editTx" data-id="${id}">Edit</button><button class="btn ghost danger" data-act="delTx" data-id="${id}">Delete</button></div>`);}
+function txForm(x){
+  const linked=x.bookingId&&S.bookings.find(b=>b.id===x.bookingId);
+  openSheet(`<h3>Edit ${txKind(x).toLowerCase()}</h3>
+  <label>Amount (€)<input id="e_amt" type="number" inputmode="decimal" min="0" step="0.5" value="${x.amount}"></label>
+  <div class="seg" id="e_meth"><button type="button" data-m="cash" class="${x.method==='cash'?'on':''}">Cash</button><button type="button" data-m="card" class="${x.method!=='cash'?'on':''}">Card</button></div>
+  <label>What for<input id="e_note" value="${esc(x.note||'')}"></label>
+  <label>Day<input id="e_date" type="date" value="${x.date}" max="${today()}"></label>
+  ${linked&&x.kind!=='refund'?`<p class="sub" style="margin-top:-4px">This is ${esc(linked.name)}'s payment — the booking's price will change to match.</p>`:''}
+  <button class="btn full" data-act="saveTx" data-id="${x.id}">Save</button>`);segBind('#e_meth');}
+function saveTx(id){
+  const x=S.tx.find(t=>t.id===id);if(!x)return;
+  const a=parseFloat($('#e_amt').value);if(!(a>0))return toast('Enter an amount');
+  const date=$('#e_date').value||x.date;if(date>today())return toast("Can't move it to the future");
+  x.amount=a;x.method=$('#e_meth .on').dataset.m;x.note=$('#e_note').value.trim()||x.note;x.date=date;
+  const b=x.bookingId&&S.bookings.find(k=>k.id===x.bookingId);
+  if(b){if(x.kind==='refund')b.refunded=sum(S.tx.filter(t=>t.bookingId===b.id&&t.kind==='refund').map(t=>t.amount));else{b.price=a;b.paidBy=x.method;}}
+  UI.tillDate=date;save();closeSheet();render();toast('Saved');}
+function refundForm(id){
+  const b=S.bookings.find(x=>x.id===id);if(!b)return;const left=Math.max(0,b.price-(+b.refunded||0));
+  if(!left)return toast('Already fully refunded');
+  openSheet(`<h3>Refund ${esc(b.name)}</h3><p class="sub" style="margin-top:0">Paid ${eur(b.price)} by ${b.paidBy}${+b.refunded?`, ${eur(b.refunded)} already refunded`:''}.</p>
+  <label>Amount to give back (€)<input id="r_amt" type="number" inputmode="decimal" min="0" step="0.5" max="${left}" value="${left}"></label>
+  <div class="seg" id="r_meth"><button type="button" data-m="cash" class="${b.paidBy==='cash'?'on':''}">Cash</button><button type="button" data-m="card" class="${b.paidBy!=='cash'?'on':''}">Card</button></div>
+  <label>Reason (optional)<input id="r_note" placeholder="e.g. Not happy with the cut"></label>
+  <button class="btn red full" data-act="saveRefund" data-id="${id}">Refund</button>`);segBind('#r_meth');}
+function doRefund(b,amount,method,reason){
+  amount=Math.min(amount,Math.max(0,b.price-(+b.refunded||0)));if(!(amount>0))return 0;
+  S.tx.push({id:uid(),date:today(),time:nowHM(),type:'out',amount,method,note:`Refund · ${b.name}${reason?' · '+reason:''}`,kind:'refund',bookingId:b.id,staffId:b.staffId});
+  b.refunded=(+b.refunded||0)+amount;save();return amount;}
+// Remove the money (and optionally the bookings) of one day / week / month.
+function clearForm(){
+  const[s,e]=tillRange(),tx=S.tx.filter(x=>x.date>=s&&x.date<=e);
+  const inn=sum(tx.filter(x=>x.type==='in').map(x=>x.amount)),out=sum(tx.filter(x=>x.type==='out').map(x=>x.amount));
+  const paid=new Set(tx.filter(x=>x.bookingId&&x.kind!=='refund').map(x=>x.bookingId)).size;
+  const bk=S.bookings.filter(b=>b.date>=s&&b.date<=e).length;
+  openSheet(`<h3 class="red">Clear ${tillLabel()}?</h3>
+  <p>This deletes <b>${tx.length} money record${tx.length===1?'':'s'}</b> (${eur(inn)} in, ${eur(out)} out) from <b>${s===e?fmtDay(s):short(s)+' – '+short(e)}</b>. Everything else — other days, settings, staff, prices — stays.</p>
+  ${paid?`<p class="sub">${paid} paid booking${paid>1?'s go':' goes'} back to “waiting”.</p>`:''}
+  ${bk?`<label class="check"><input id="c_bk" type="checkbox"> Also delete the ${bk} booking${bk>1?'s':''} and walk-ins from these days</label>`:''}
+  <label>Type <b>CLEAR</b> to confirm<input id="clearWord" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+  <button class="btn red full" id="clearGo" data-act="clearGo" disabled>Clear</button>
+  <button class="btn ghost full" data-act="closeSheet" style="margin-top:8px">Cancel</button>`);
+  $('#clearWord').addEventListener('input',ev=>{$('#clearGo').disabled=ev.target.value.trim().toUpperCase()!=='CLEAR';});}
+function clearPeriod(){
+  if($('#clearWord').value.trim().toUpperCase()!=='CLEAR')return;
+  const[s,e]=tillRange(),inR=d=>d>=s&&d<=e,alsoBk=$('#c_bk')&&$('#c_bk').checked;
+  const gone=S.tx.filter(x=>inR(x.date));
+  const reset=new Set();
+  gone.forEach(x=>{const b=x.bookingId&&S.bookings.find(k=>k.id===x.bookingId);if(!b)return;
+    if(x.kind==='refund')b.refunded=Math.max(0,(+b.refunded||0)-x.amount);else{b.status='waiting';b.paidBy=null;b.refunded=0;reset.add(b.id);}});
+  // Drop the cleared records, plus any later refund of a payment we just cleared.
+  S.tx=S.tx.filter(x=>!inR(x.date)&&!(x.kind==='refund'&&reset.has(x.bookingId)));
+  if(alsoBk){const ids=new Set(S.bookings.filter(b=>inR(b.date)).map(b=>b.id));S.bookings=S.bookings.filter(b=>!ids.has(b.id));S.tx=S.tx.filter(x=>!ids.has(x.bookingId));}
+  save();closeSheet();render();toast(`Cleared ${gone.length} record${gone.length===1?'':'s'}`);}
 
 /* ---------- Staff ---------- */
 function viewStaff(){
@@ -523,7 +580,7 @@ function viewSettings(){
   ${hasSync()?Sync.card():''}${hasSync()?'':`<div class="card"><h2 style="margin-bottom:6px">Backup</h2><p class="sub" style="margin-top:0">${hasSync()&&Sync.signedIn()?'Your data is also backed up in the cloud. A backup file is an extra copy you keep yourself.':'Everything is stored on this phone only. Save a backup file now and then, and before switching phones.'}</p><div class="grid2" style="margin:0"><button class="btn ghost" data-act="export">Save backup</button><button class="btn ghost" data-act="import">Restore</button></div></div>`}
   <div class="card"><h2 style="margin-bottom:12px">Data</h2><button class="btn ghost danger full" data-act="wipe" style="margin:0">Erase everything</button></div><input type="file" id="importFile" accept="application/json,.json" hidden>
   <div class="card"><h2 style="margin-bottom:6px">Add to home screen</h2><p class="sub" style="margin:0">iPhone: open in Safari → Share → <b>Add to Home Screen</b>. Android: Chrome menu → <b>Add to Home screen</b>.</p></div>
-  <p class="foot">Chairside v2.0.1 · <a href="privacy.html" style="color:inherit">Privacy</a></p>`;}
+  <p class="foot">Chairside v2.1.1 · <a href="privacy.html" style="color:inherit">Privacy</a></p>`;}
 function doExport(){const blob=new Blob([JSON.stringify(S)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`chairside-backup-${today()}.json`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);toast('Backup saved');}
 function doImport(input){const f=input.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!Array.isArray(o.services)||!Array.isArray(o.bookings)||!Array.isArray(o.tx))throw 0;
@@ -694,6 +751,16 @@ function runCommand(raw){
     return reply(`${kind==='advance'?'Advance':'Payment'} of ${eur(num)} to ${payee.name} recorded.`);}
   if(has(/\badvance\b/))return reply('Which barber? Say their name, like "give Sam 50 advance".');
 
+  // refund: "refund Liam", "refund Liam 10 cash"
+  if(has(/\brefund(ed)?\b/)){
+    const nameW=findName(t.replace(/\brefund(ed)?\b/g,' '),new Set(),null),parts=nameW.toLowerCase().split(' ').filter(Boolean);
+    const b=parts.length&&S.bookings.filter(b=>b.status==='done'&&b.date>=addDays(T,-7)&&b.price-(+b.refunded||0)>0).sort((a,c)=>(c.date+(c.time||'')).localeCompare(a.date+(a.time||''))).find(b=>b.name.toLowerCase().split(/\s+/).some(w=>parts.includes(w)));
+    if(!b){const full=parts.length&&S.bookings.find(b=>b.status==='done'&&+b.refunded>=b.price&&b.name.toLowerCase().split(/\s+/).some(w=>parts.includes(w)));
+      return reply(full?`${full.name} has already been refunded in full.`:nameW?`I couldn't find a paid booking for ${nameW} this week.`:'Who should I refund? Try "refund Liam".');}
+    const num=amount??firstNum(t),left=b.price-(+b.refunded||0),a=num?Math.min(num,left):left;
+    doRefund(b,a,has(/\bcard\b/)?'card':has(/\bcash\b/)?'cash':b.paidBy,'');render();
+    return reply(`Refunded ${eur(a)} to ${b.name}.`);}
+
   // sale (money in)
   if(has(/\b(sold|sale)\b/)){const num=amount??firstNum(t);if(!num)return reply('How much was the sale?');
     const note=t.replace(/\d+(\.\d+)?/g,' ').split(/\s+/).filter(x=>x&&!['sold','sale','a','an','the','of','for','cash','card','euro','euros','i'].includes(x)).join(' ');
@@ -764,7 +831,7 @@ const ACT={
   openBooking:(el,id)=>bookingDetail(id),
   pay:(el,id)=>{payBooking(id,el.dataset.m);closeSheet();render();toast('Paid ✓');},
   noshow:(el,id)=>{const b=S.bookings.find(x=>x.id===id);if(b){b.status='noshow';save();}closeSheet();render();},
-  undo:(el,id)=>{const b=S.bookings.find(x=>x.id===id);if(!b)return;S.tx=S.tx.filter(x=>x.bookingId!==id);b.status='waiting';b.paidBy=null;save();closeSheet();render();},
+  undo:(el,id)=>{const b=S.bookings.find(x=>x.id===id);if(!b)return;S.tx=S.tx.filter(x=>x.bookingId!==id);b.status='waiting';b.paidBy=null;b.refunded=0;save();closeSheet();render();},
   editBooking:(el,id)=>bookingForm(S.bookings.find(x=>x.id===id)),
   delBooking:(el,id)=>{if(!confirm('Delete this booking?'))return;S.bookings=S.bookings.filter(x=>x.id!==id);S.tx=S.tx.filter(x=>x.bookingId!==id);save();closeSheet();render();},
   tillMode:el=>{UI.tillMode=el.dataset.m;UI.tillDate=today();render();},
@@ -778,7 +845,18 @@ const ACT={
     S.tx=S.tx.filter(x=>!(x.type==='float'&&x.date===UI.tillDate));
     if(a>0)S.tx.push({id:uid(),date:UI.tillDate,time:'00:00',type:'float',amount:a,method:'cash',note:'Start cash',kind:'float'});
     save();closeSheet();render();toast('Saved');},
-  delTx:(el,id)=>{if(!confirm('Delete this transaction?'))return;const x=S.tx.find(t=>t.id===id);if(x&&x.bookingId){const b=S.bookings.find(b=>b.id===x.bookingId);if(b){b.status='waiting';b.paidBy=null;}}S.tx=S.tx.filter(t=>t.id!==id);save();closeSheet();render();},
+  delTx:(el,id)=>{const x=S.tx.find(t=>t.id===id);if(!x)return;const b=x.bookingId&&S.bookings.find(k=>k.id===x.bookingId);
+    if(!confirm(b&&x.kind!=='refund'?`Delete this payment? ${b.name}'s booking goes back to “waiting”.`:'Delete this record?'))return;
+    if(b){if(x.kind==='refund')b.refunded=Math.max(0,(+b.refunded||0)-x.amount);
+      else{b.status='waiting';b.paidBy=null;b.refunded=0;S.tx=S.tx.filter(t=>!(t.bookingId===b.id&&t.kind==='refund'));}}
+    S.tx=S.tx.filter(t=>t.id!==id);save();closeSheet();render();},
+  editTx:(el,id)=>txForm(S.tx.find(t=>t.id===id)),
+  saveTx:(el,id)=>saveTx(id),
+  clearPeriod:clearForm,clearGo:clearPeriod,
+  refund:(el,id)=>refundForm(id),
+  saveRefund:(el,id)=>{const b=S.bookings.find(x=>x.id===id);const a=parseFloat($('#r_amt').value);if(!(a>0))return toast('Enter an amount');
+    const left=b.price-(+b.refunded||0);if(a>left+0.001)return toast(`Most you can refund is ${eur(left)}`);
+    doRefund(b,a,$('#r_meth .on').dataset.m,$('#r_note').value.trim());closeSheet();render();toast(`Refunded ${eur(a)}`);},
   wkPrev:()=>{UI.staffWeek=addDays(UI.staffWeek,-7);render();},wkNext:()=>{UI.staffWeek=addDays(UI.staffWeek,7);render();},
   staffPay:(el,id)=>staffPayForm(id,el.dataset.k),saveStaffPay:(el,id)=>saveStaffPay(id,el.dataset.k),
   addSvc:()=>{S.services.push({id:uid(),name:'New service',price:0,dur:30});save();render();const n=document.querySelectorAll('[data-set=svcName]');const last=n[n.length-1];if(last){last.focus();last.select();}},
@@ -833,6 +911,6 @@ setInterval(()=>{const T=today();
   if(UI.tab==='today'&&!$('#sheet').classList.contains('open')&&!document.activeElement.matches('input,select'))render();},60000);
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
-<script src="sync.js?v=2.0.1"></script>
+<script src="sync.js?v=2.1.1"></script>
 </body>
 </html>
