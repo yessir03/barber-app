@@ -37,11 +37,16 @@ main{padding:0 16px;max-width:640px;margin:0 auto}
 .center{text-align:center}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--brass-soft);color:var(--brass);border-radius:16px;padding:12px 14px;margin-bottom:12px;font-size:14px;font-weight:600}
-.strip{display:flex;gap:8px;overflow-x:auto;margin:0 -16px 12px;padding:2px 16px 4px;scrollbar-width:none}
-.strip::-webkit-scrollbar{display:none}
-.day{flex:none;width:60px;border:1px solid var(--line);background:var(--card);border-radius:16px;padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
-.day span{font-size:12px;color:var(--muted)}.day b{font-size:20px}.day i{font-style:normal;font-size:9px;color:var(--brass);letter-spacing:1px;height:12px}
-.day.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.day.on span,.day.on i{color:var(--bg)}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:12px}
+.day{min-width:0;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:7px 0 5px;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer}
+.day span{font-size:11px;color:var(--muted);white-space:nowrap}.day b{font-size:18px}.day i{font-style:normal;font-size:11px;font-weight:700;color:var(--brass);height:14px}
+.day.past{opacity:.6}.day.now{border-color:var(--accent)}
+.day.on{background:var(--ink);color:var(--bg);border-color:var(--ink);opacity:1}.day.on span,.day.on i{color:var(--bg)}
+.linkbtn{border:0;background:none;color:var(--accent);font-weight:700;font-size:13px;padding:2px 6px;cursor:pointer}
+.tiny{font-size:11px;font-weight:600}
+.sub.red{color:var(--red)}
+.svcedit{padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--line)}
+.svcedit label{margin-bottom:0}
 .next{border:2px solid var(--accent);cursor:pointer}
 .next .nm{font-size:24px;font-weight:800}.next .nt{font-size:30px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
 .sec{display:flex;align-items:flex-end;justify-content:space-between;margin:22px 2px 10px;gap:10px}
@@ -160,13 +165,13 @@ const short=s=>parseYmd(s).toLocaleDateString('en-IE',{day:'numeric',month:'shor
 const KEY='chairside-v1';
 let S;
 function baseData(){return{shop:'My Barbershop',hours:{open:'09:00',close:'19:00',slot:30},voiceReply:true,demo:false,
-  services:[{id:'s1',name:'Haircut',price:20},{id:'s2',name:'Skin fade',price:25},{id:'s3',name:'Beard trim',price:12},{id:'s4',name:'Hair + Beard',price:30},{id:'s5',name:'Kids cut',price:15},{id:'s6',name:'Hot towel shave',price:20}],
+  services:[{id:'s1',name:'Haircut',price:20,dur:30},{id:'s2',name:'Skin fade',price:25,dur:45},{id:'s3',name:'Beard trim',price:12,dur:15},{id:'s4',name:'Hair + Beard',price:30,dur:45},{id:'s5',name:'Kids cut',price:15,dur:20},{id:'s6',name:'Hot towel shave',price:20,dur:30}],
   staff:[{id:'me',name:'Me',pay:'owner',rate:0,wage:0}],bookings:[],tx:[]};}
 function sampleData(){
   const d=baseData();d.demo=true;d.shop='Fade Street Barbers';
   d.staff.push({id:'sam',name:'Sam',pay:'both',rate:20,wage:350});
   const T=today(),ws=weekStart(T),svc=id=>d.services.find(s=>s.id===id);
-  const mk=(date,time,name,sid,staff,status,paid)=>{const s=svc(sid);const b={id:uid(),date,time,walkin:!time,name,serviceId:sid,staffId:staff,price:s.price,status,created:Date.now()+d.bookings.length};
+  const mk=(date,time,name,sid,staff,status,paid)=>{const s=svc(sid);const b={id:uid(),date,time,walkin:!time,name,serviceId:sid,staffId:staff,price:s.price,dur:s.dur,status,created:Date.now()+d.bookings.length};
     if(status==='done'){b.paidBy=paid;d.tx.push({id:uid(),date,time:time||'12:00',type:'in',amount:s.price,method:paid,note:`${name} · ${s.name}`,kind:'service',bookingId:b.id,staffId:staff});}
     d.bookings.push(b);};
   const past=['Conor Byrne','Seán Murphy','Darragh Kelly','Cian Walsh','Adam Nolan','Fionn Ryan','Eoin Daly','Luke Kavanagh','Mark Doyle','Tadhg Burke','Niall Quinn','Rory Moran'];
@@ -179,13 +184,34 @@ function sampleData(){
   d.tx.push({id:uid(),date:ws,time:'18:00',type:'out',amount:50,method:'cash',note:'Sam · Advance',kind:'advance',staffId:'sam'});
   d.tx.push({id:uid(),date:addDays(T,-1)>=ws?addDays(T,-1):T,time:'13:15',type:'out',amount:38,method:'card',note:'Clipper oil & blades',kind:'expense'});
   return d;}
-function load(){try{const r=localStorage.getItem(KEY);if(r){S=Object.assign(baseData(),JSON.parse(r));return;}}catch(e){}S=sampleData();}
+// Fill in anything older saved data (or an old backup) is missing, so nothing breaks after an update.
+function migrate(o){
+  const d=Object.assign(baseData(),o);
+  d.hours=Object.assign(baseData().hours,d.hours||{});
+  const guess=n=>/beard|trim/i.test(n)&&!/hair|cut/i.test(n)?15:/kid|child/i.test(n)?20:/fade|\+|and/i.test(n)?45:30;
+  d.services.forEach(s=>{if(!(+s.dur>0))s.dur=guess(s.name||'');s.price=+s.price||0;});
+  d.bookings.forEach(b=>{if(!b.walkin&&!(+b.dur>0)){const s=d.services.find(x=>x.id===b.serviceId);b.dur=s?s.dur:30;}});
+  if(!d.staff.length)d.staff=baseData().staff;
+  return d;}
+function load(){try{const r=localStorage.getItem(KEY);if(r){S=migrate(JSON.parse(r));return;}}catch(e){}S=sampleData();}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){toast('Could not save on this device');}}
 
 const svcById=id=>S.services.find(s=>s.id===id);
 const staffById=id=>S.staff.find(s=>s.id===id);
 const svcName=b=>{const s=svcById(b.serviceId);return s?s.name:'Service';};
 const staffTag=b=>{if(S.staff.length<2)return'';const s=staffById(b.staffId);return s?' · '+esc(s.name):'';};
+const durOf=b=>+b.dur||+(svcById(b.serviceId)||{}).dur||+S.hours.slot||30;
+const durTxt=m=>m<60?m+' min':Math.floor(m/60)+'h'+(m%60?' '+(m%60)+'m':'');
+const DURS=[5,10,15,20,25,30,35,40,45,50,55,60,75,90,105,120,150,180];
+const durOptions=sel=>{const list=DURS.includes(+sel)?DURS:[...DURS,+sel].sort((a,b)=>a-b);return list.map(m=>`<option value="${m}" ${m===+sel?'selected':''}>${durTxt(m)}</option>`).join('');};
+// Bookings for one barber that overlap a time window (minutes from midnight).
+function clashes(date,staffId,start,dur,excludeId){
+  return S.bookings.filter(b=>b.id!==excludeId&&b.date===date&&b.staffId===staffId&&!b.walkin&&b.time&&b.status!=='noshow')
+    .filter(b=>{const s=toMin(b.time);return s<start+dur&&start<s+durOf(b);});}
+const freeStaff=(date,start,dur,excludeId)=>S.staff.filter(s=>!clashes(date,s.id,start,dur,excludeId).length);
+const inHours=(start,dur)=>start>=toMin(S.hours.open)&&start+dur<=toMin(S.hours.close);
+// Every 15 minutes from 05:00 to 23:45, for opening-hour pickers.
+const QUARTERS=Array.from({length:76},(_,i)=>fromMin(300+i*15));
 
 function staffCalc(st,ws){
   const we=addDays(ws,6);
@@ -212,13 +238,13 @@ function render(){
 /* ---------- Today ---------- */
 function freeSlots(d){
   const T=today();if(d<T)return[];
-  const o=toMin(S.hours.open),c=toMin(S.hours.close),st=+S.hours.slot||30,n=Math.max(1,S.staff.length),nm=d===T?toMin(nowHM()):-1,out=[];
-  for(let m=o;m+st<=c;m+=st){if(m<nm)continue;const tm=fromMin(m);
-    if(S.bookings.filter(b=>b.date===d&&!b.walkin&&b.time===tm&&b.status!=='noshow').length<n)out.push(tm);}
+  const o=toMin(S.hours.open),c=toMin(S.hours.close),st=+S.hours.slot||30,nm=d===T?toMin(nowHM()):-1,out=[];
+  for(let m=o;m+st<=c;m+=st){if(m<nm)continue;if(freeStaff(d,m,st).length)out.push(fromMin(m));}
   return out;}
 function rowHtml(b,left){
   const st={waiting:['waiting','pill'],done:['paid · '+(b.paidBy||''),'pill ok'],noshow:['no-show','pill bad']}[b.status];
-  return`<div class="card rowc ${b.status}" data-act="openBooking" data-id="${b.id}"><div class="rt">${esc(left)}</div><div class="rm"><div class="nm">${esc(b.name)}</div><div class="sub">${esc(svcName(b))}${staffTag(b)}</div></div><div class="rr"><div class="pr">${eur(b.price)}</div><span class="${st[1]}">${st[0]}</span></div></div>`;}
+  const end=!b.walkin&&b.time?`<div class="sub tiny">–${fromMin(toMin(b.time)+durOf(b))}</div>`:'';
+  return`<div class="card rowc ${b.status}" data-act="openBooking" data-id="${b.id}"><div class="rt">${esc(left)}${end}</div><div class="rm"><div class="nm">${esc(b.name)}</div><div class="sub">${esc(svcName(b))}${b.walkin?'':' · '+durTxt(durOf(b))}${staffTag(b)}</div></div><div class="rr"><div class="pr">${eur(b.price)}</div><span class="${st[1]}">${st[0]}</span></div></div>`;}
 function viewToday(){
   const d=UI.date,T=today();
   const list=S.bookings.filter(b=>b.date===d);
@@ -227,9 +253,11 @@ function viewToday(){
   const live=list.filter(b=>b.status!=='noshow');
   const inn=S.tx.filter(x=>x.date===d&&x.type==='in');
   const cash=sum(inn.filter(x=>x.method==='cash').map(x=>x.amount)),card=sum(inn.filter(x=>x.method==='card').map(x=>x.amount));
-  let h='<div class="strip">';
-  for(let i=-2;i<=7;i++){const ds=addDays(T,i),dd=parseYmd(ds),n=S.bookings.filter(b=>b.date===ds&&b.status!=='noshow').length;
-    h+=`<div class="day ${ds===d?'on':''}" data-act="pickDay" data-d="${ds}"><span>${i===0?'Today':dd.toLocaleDateString('en-IE',{weekday:'short'})}</span><b>${dd.getDate()}</b><i>${'•'.repeat(Math.min(n,5))}</i></div>`;}
+  const ws=weekStart(d),we=addDays(ws,6),thisWeek=ws===weekStart(T);
+  const wlabel=thisWeek?'This week':ws===addDays(weekStart(T),7)?'Next week':short(ws)+' – '+short(we);
+  let h=`<div class="navrow"><button class="btn icon ghost" data-act="weekPrev" aria-label="Previous week">‹</button><div class="center"><b>${wlabel}</b>${d!==T?`<div><button class="linkbtn" data-act="goToday">Back to today</button></div>`:''}</div><button class="btn icon ghost" data-act="weekNext" aria-label="Next week">›</button></div><div class="week">`;
+  for(let i=0;i<7;i++){const ds=addDays(ws,i),dd=parseYmd(ds),n=S.bookings.filter(b=>b.date===ds&&b.status!=='noshow').length;
+    h+=`<button class="day ${ds===d?'on':''} ${ds===T?'now':''} ${ds<T?'past':''}" data-act="pickDay" data-d="${ds}"><span>${ds===T?'Today':dd.toLocaleDateString('en-IE',{weekday:'short'})}</span><b>${dd.getDate()}</b><i>${n?(n>9?'9+':n):''}</i></button>`;}
   h+='</div>';
   h+=`<div class="grid2"><div class="card"><div class="label">${d===T?'Today':fmtDay(d)}</div><div class="big">${live.length}</div><div class="sub">${live.filter(b=>b.status==='done').length} done · ${live.filter(b=>b.status==='waiting').length} waiting</div></div>
   <div class="card"><div class="label">Taken</div><div class="big green">${eur(cash+card)}</div><div class="sub">Cash ${eur(cash)} · Card ${eur(card)}</div></div></div>`;
@@ -250,22 +278,48 @@ function viewToday(){
 function bookingForm(b,preset){
   const isNew=!b;preset=preset||{};
   const first=S.services[0];
-  b=b||{name:'',phone:'',serviceId:first.id,staffId:S.staff[0].id,date:UI.date<today()?today():UI.date,time:preset.time||'',walkin:!!preset.walkin,price:first.price};
+  b=b||{name:'',phone:'',serviceId:first.id,staffId:S.staff[0].id,date:UI.date<today()?today():UI.date,time:preset.time||'',walkin:!!preset.walkin,price:first.price,dur:first.dur};
+  const editId=isNew?'':b.id;
+  // Pick a barber who is free at the tapped time, if the first one isn't.
+  if(isNew&&b.time){const f=freeStaff(b.date,toMin(b.time),b.dur);if(f.length)b.staffId=f[0].id;}
   openSheet(`<h3>${isNew?(b.walkin?'New walk-in':'New booking'):'Edit booking'}</h3>
   <label>Name<input id="f_name" value="${esc(b.name)}" placeholder="Customer name" autocomplete="off"></label>
   <label>Phone (optional)<input id="f_phone" type="tel" value="${esc(b.phone||'')}" placeholder="08x xxx xxxx"></label>
   <label>Service<select id="f_svc">${S.services.map(s=>`<option value="${s.id}" ${s.id===b.serviceId?'selected':''}>${esc(s.name)} — ${eur(s.price)}</option>`).join('')}</select></label>
   ${S.staff.length>1?`<label>Barber<select id="f_staff">${S.staff.map(s=>`<option value="${s.id}" ${s.id===b.staffId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label>`:''}
-  <div class="grid2" style="margin:0"><label>Date<input id="f_date" type="date" value="${b.date}"></label><label>Time<input id="f_time" type="time" step="300" value="${b.time||''}" ${b.walkin?'disabled':''}></label></div>
   <label class="check"><input id="f_walk" type="checkbox" ${b.walkin?'checked':''}> Walk-in (no set time)</label>
-  <label>Price (€)<input id="f_price" type="number" inputmode="decimal" step="0.5" value="${b.price}"></label>
-  <button class="btn full" data-act="saveBooking" data-id="${isNew?'':b.id}">Save</button>`);
-  $('#f_svc').onchange=e=>{const s=svcById(e.target.value);if(s)$('#f_price').value=s.price;};
-  $('#f_walk').onchange=e=>{$('#f_time').disabled=e.target.checked;};}
+  <div id="f_when" ${b.walkin?'hidden':''}><label>Date<input id="f_date" type="date" value="${b.date}"></label>
+  <div class="grid2" style="margin:0"><label>Time<select id="f_time"></select></label><label>Takes<select id="f_dur">${durOptions(durOf(b))}</select></label></div>
+  <div class="sub" id="f_hint" style="margin:-4px 0 12px"></div></div>
+  <label>Price (€)<input id="f_price" type="number" inputmode="decimal" step="0.5" min="0" value="${b.price}"></label>
+  <button class="btn full" data-act="saveBooking" data-id="${editId}">Save</button>`);
+  // Time dropdown: every slot in opening hours, marked "busy" for the chosen barber.
+  const fillTimes=keep=>{
+    const date=$('#f_date').value||today(),staff=$('#f_staff')?$('#f_staff').value:S.staff[0].id,dur=+$('#f_dur').value;
+    const step=Math.min(15,+S.hours.slot||30),o=toMin(S.hours.open),c=toMin(S.hours.close);
+    const times=[];for(let m=o;m<c;m+=step)times.push(fromMin(m));
+    if(keep&&!times.includes(keep))times.push(keep),times.sort();
+    $('#f_time').innerHTML=(keep?'':'<option value="">Pick a time</option>')+times.map(t=>{const busy=clashes(date,staff,toMin(t),dur,editId).length,late=!inHours(toMin(t),dur);
+      return`<option value="${t}" ${t===keep?'selected':''}>${t}${busy?' · busy':late?' · after closing':''}</option>`;}).join('');
+    hint();};
+  const hint=()=>{const t=$('#f_time').value,dur=+$('#f_dur').value;if(!t){$('#f_hint').textContent='';return;}
+    const date=$('#f_date').value||today(),staff=$('#f_staff')?$('#f_staff').value:S.staff[0].id,cl=clashes(date,staff,toMin(t),dur,editId);
+    $('#f_hint').textContent=`${t} – ${fromMin(toMin(t)+dur)}`+(cl.length?` · overlaps ${cl[0].name} (${cl[0].time})`:'');
+    $('#f_hint').className='sub'+(cl.length?' red':'');};
+  fillTimes(b.time||'');
+  $('#f_svc').onchange=e=>{const s=svcById(e.target.value);if(s){$('#f_price').value=s.price;$('#f_dur').innerHTML=durOptions(s.dur);}fillTimes($('#f_time').value);};
+  ['#f_date','#f_dur','#f_staff'].forEach(sel=>{const el=$(sel);if(el)el.onchange=()=>fillTimes($('#f_time').value);});
+  $('#f_time').onchange=hint;
+  $('#f_walk').onchange=e=>{$('#f_when').hidden=e.target.checked;};}
 function saveBooking(id){
   const name=$('#f_name').value.trim();if(!name)return toast('Add a name');
   const walk=$('#f_walk').checked,time=$('#f_time').value;if(!walk&&!time)return toast('Pick a time or tick walk-in');
-  const data={name,phone:$('#f_phone').value.trim(),serviceId:$('#f_svc').value,staffId:$('#f_staff')?$('#f_staff').value:S.staff[0].id,date:$('#f_date').value||today(),time:walk?null:time,walkin:walk,price:parseFloat($('#f_price').value)||0};
+  const price=parseFloat($('#f_price').value);if(!(price>=0))return toast('Check the price');
+  const data={name,phone:$('#f_phone').value.trim(),serviceId:$('#f_svc').value,staffId:$('#f_staff')?$('#f_staff').value:S.staff[0].id,
+    date:$('#f_date').value||today(),time:walk?null:time,walkin:walk,price,dur:+$('#f_dur').value||30};
+  if(!walk){const cl=clashes(data.date,data.staffId,toMin(time),data.dur,id);
+    if(cl.length&&!confirm(`This overlaps ${cl[0].name} at ${cl[0].time}. Book anyway?`))return;
+    if(!cl.length&&!inHours(toMin(time),data.dur)&&!confirm('This runs outside opening hours. Book anyway?'))return;}
   if(id)Object.assign(S.bookings.find(b=>b.id===id),data);
   else S.bookings.push({id:uid(),status:'waiting',created:Date.now(),...data});
   UI.date=data.date;save();closeSheet();render();toast('Saved');}
@@ -274,12 +328,14 @@ function bookingDetail(id){
   const actions=b.status==='waiting'
     ?`<div class="grid2"><button class="btn green" data-act="pay" data-id="${id}" data-m="cash">Paid · Cash</button><button class="btn green" data-act="pay" data-id="${id}" data-m="card">Paid · Card</button></div><button class="btn ghost full" data-act="noshow" data-id="${id}" style="margin:0 0 12px">Mark no-show</button>`
     :`<button class="btn ghost full" data-act="undo" data-id="${id}" style="margin:0 0 12px">Undo ${b.status==='done'?'payment':'no-show'}</button>`;
-  openSheet(`<h3>${esc(b.name)}</h3><div class="kv"><span>When</span><b>${b.walkin?'Walk-in':b.time} · ${fmtDay(b.date)}</b><span>Service</span><b>${esc(svcName(b))}</b>${st&&S.staff.length>1?`<span>Barber</span><b>${esc(st.name)}</b>`:''}<span>Price</span><b>${eur(b.price)}</b>${b.status==='done'?`<span>Paid by</span><b>${b.paidBy}</b>`:''}${b.phone?`<span>Phone</span><b><a href="tel:${esc(b.phone)}">${esc(b.phone)}</a></b>`:''}</div>
+  openSheet(`<h3>${esc(b.name)}</h3><div class="kv"><span>When</span><b>${b.walkin?'Walk-in':b.time+'–'+fromMin(toMin(b.time)+durOf(b))} · ${fmtDay(b.date)}</b><span>Service</span><b>${esc(svcName(b))}</b>${st&&S.staff.length>1?`<span>Barber</span><b>${esc(st.name)}</b>`:''}<span>Price</span><b>${eur(b.price)}</b>${b.status==='done'?`<span>Paid by</span><b>${b.paidBy}</b>`:''}${b.phone?`<span>Phone</span><b><a href="tel:${esc(b.phone)}">${esc(b.phone)}</a></b>`:''}</div>
   ${actions}<div class="grid2"><button class="btn ghost" data-act="editBooking" data-id="${id}">Edit</button><button class="btn ghost danger" data-act="delBooking" data-id="${id}">Delete</button></div>`);}
 function payBooking(id,m){
   const b=S.bookings.find(x=>x.id===id);if(!b||b.status==='done')return;
   b.status='done';b.paidBy=m;
-  S.tx.push({id:uid(),date:today(),time:nowHM(),type:'in',amount:b.price,method:m,note:`${b.name} · ${svcName(b)}`,kind:'service',bookingId:b.id,staffId:b.staffId});save();}
+  // A booking marked paid later (e.g. next morning) still counts on the day it happened.
+  const T=today(),past=b.date<T;
+  S.tx.push({id:uid(),date:past?b.date:T,time:past?(b.time||'12:00'):nowHM(),type:'in',amount:b.price,method:m,note:`${b.name} · ${svcName(b)}`,kind:'service',bookingId:b.id,staffId:b.staffId});save();}
 
 /* ---------- Till ---------- */
 function tillRange(){const m=UI.tillMode,d=UI.tillDate;if(m==='day')return[d,d];if(m==='week'){const s=weekStart(d);return[s,addDays(s,6)];}return monthRange(d);}
@@ -341,19 +397,20 @@ function saveStaffPay(id,k){const a=parseFloat($('#p_amt').value);if(!(a>0))retu
 function viewSettings(){
   const pays=[['owner','Owner'],['commission','Commission'],['wage','Weekly wage'],['both','Wage + commission']];
   return`<div class="card"><h2 style="margin-bottom:12px">Shop</h2><label>Shop name<input data-set="shop" value="${esc(S.shop)}"></label></div>
-  <div class="card"><h2 style="margin-bottom:12px">Services & prices (€)</h2>${S.services.map(s=>`<div class="erow"><input data-set="svcName" data-id="${s.id}" value="${esc(s.name)}" aria-label="Service name"><input class="num" type="number" inputmode="decimal" data-set="svcPrice" data-id="${s.id}" value="${s.price}" aria-label="Price"><button class="btn icon ghost danger" data-act="delSvc" data-id="${s.id}" aria-label="Remove">×</button></div>`).join('')}<button class="btn ghost sm" data-act="addSvc">+ Add service</button></div>
+  <div class="card"><h2 style="margin-bottom:12px">Services</h2>${S.services.map(s=>`<div class="svcedit"><div class="erow"><input data-set="svcName" data-id="${s.id}" value="${esc(s.name)}" aria-label="Service name"><button class="btn icon ghost danger" data-act="delSvc" data-id="${s.id}" aria-label="Remove ${esc(s.name)}">×</button></div>
+  <div class="grid2" style="margin:0"><label class="mini-l">Price €<input type="number" inputmode="decimal" min="0" step="0.5" data-set="svcPrice" data-id="${s.id}" value="${s.price}"></label><label class="mini-l">Takes<select data-set="svcDur" data-id="${s.id}">${durOptions(s.dur)}</select></label></div></div>`).join('')}<button class="btn ghost sm" data-act="addSvc">+ Add service</button></div>
   <div class="card"><h2 style="margin-bottom:12px">Team</h2>${S.staff.map(s=>`<div class="staffedit"><div class="erow"><input data-set="stName" data-id="${s.id}" value="${esc(s.name)}" aria-label="Name"><select data-set="stPay" data-id="${s.id}" aria-label="Pay type">${pays.map(([v,l])=>`<option value="${v}" ${s.pay===v?'selected':''}>${l}</option>`).join('')}</select>${S.staff.length>1?`<button class="btn icon ghost danger" data-act="delStaff" data-id="${s.id}" aria-label="Remove">×</button>`:''}</div>
   ${s.pay==='commission'||s.pay==='both'?`<label class="inl">Commission %<input type="number" inputmode="decimal" data-set="stRate" data-id="${s.id}" value="${s.rate||0}"></label>`:''}${s.pay==='wage'||s.pay==='both'?`<label class="inl">Weekly wage €<input type="number" inputmode="decimal" data-set="stWage" data-id="${s.id}" value="${s.wage||0}"></label>`:''}</div>`).join('')}<button class="btn ghost sm" data-act="addStaff">+ Add barber</button></div>
-  <div class="card"><h2 style="margin-bottom:12px">Opening hours</h2><div class="grid3"><label>Open<input type="time" data-set="open" value="${S.hours.open}"></label><label>Close<input type="time" data-set="close" value="${S.hours.close}"></label><label>Slots<select data-set="slot">${[15,20,30,45,60].map(m=>`<option value="${m}" ${+S.hours.slot===m?'selected':''}>${m} min</option>`).join('')}</select></label></div></div>
+  <div class="card"><h2 style="margin-bottom:12px">Opening hours</h2><div class="grid3"><label>Open<select data-set="open">${QUARTERS.map(t=>`<option ${t===S.hours.open?'selected':''}>${t}</option>`).join('')}</select></label><label>Close<select data-set="close">${QUARTERS.map(t=>`<option ${t===S.hours.close?'selected':''}>${t}</option>`).join('')}</select></label><label>Gap<select data-set="slot">${[15,20,30,45,60].map(m=>`<option value="${m}" ${+S.hours.slot===m?'selected':''}>${m} min</option>`).join('')}</select></label></div><p class="sub" style="margin:0">“Gap” is how far apart the free times on the Today screen are.</p></div>
   <div class="card"><h2 style="margin-bottom:12px">Voice</h2><label class="check" style="margin:0"><input type="checkbox" data-set="voiceReply" ${S.voiceReply?'checked':''}> Read answers out loud</label></div>
   <div class="card"><h2 style="margin-bottom:6px">Backup</h2><p class="sub" style="margin-top:0">Everything is stored on this phone only. Save a backup file now and then, and before switching phones.</p><div class="grid2" style="margin:0"><button class="btn ghost" data-act="export">Save backup</button><button class="btn ghost" data-act="import">Restore</button></div><input type="file" id="importFile" accept="application/json,.json" hidden></div>
   <div class="card"><h2 style="margin-bottom:12px">Data</h2><div class="grid2" style="margin:0"><button class="btn ghost" data-act="sample">Load sample data</button><button class="btn ghost danger" data-act="wipe">Erase everything</button></div></div>
   <div class="card"><h2 style="margin-bottom:6px">Add to home screen</h2><p class="sub" style="margin:0">iPhone: open in Safari → Share → <b>Add to Home Screen</b>. Android: Chrome menu → <b>Add to Home screen</b>.</p></div>
-  <p class="foot">Chairside v1</p>`;}
+  <p class="foot">Chairside v1.1</p>`;}
 function doExport(){const blob=new Blob([JSON.stringify(S)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`chairside-backup-${today()}.json`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);toast('Backup saved');}
 function doImport(input){const f=input.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!Array.isArray(o.services)||!Array.isArray(o.bookings)||!Array.isArray(o.tx))throw 0;
-    if(confirm('Replace the data on this phone with this backup?')){S=Object.assign(baseData(),o);save();render();toast('Backup restored');}}
+    if(confirm('Replace the data on this phone with this backup?')){S=migrate(o);save();UI.date=today();render();toast('Backup restored');}}
     catch(e){toast('That file is not a Chairside backup');}input.value='';};r.readAsText(f);}
 
 /* ---------- Sheet & toast ---------- */
@@ -385,7 +442,7 @@ function toggleMic(){
 function stopMic(){if(listening&&rec){listening=false;try{rec.abort();}catch(e){}}}
 function reply(msg){
   const a=$('#answer');if(a&&$('#sheet').classList.contains('open')){a.hidden=false;a.textContent=msg;}else toast(msg);
-  if(S.voiceReply&&'speechSynthesis' in window){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg.replace(/−?€([\d,.]+)/g,'$1 euro'));u.lang='en-IE';speechSynthesis.speak(u);}catch(e){}}
+  if(S.voiceReply&&'speechSynthesis' in window){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg.replace(/−€([\d,.]+)/g,'minus $1 euro').replace(/€([\d,.]+)/g,'$1 euro'));u.lang='en-IE';speechSynthesis.speak(u);}catch(e){}}
   return msg;}
 
 /* ---------- Command parser (English, rule-based, free) ---------- */
@@ -413,7 +470,8 @@ function findName(t,ex,staff){
 function fixH(h,mi,ap){
   ap=(ap||'').replace(/[\s.]/g,'');
   if(ap==='pm'&&h<12)h+=12;else if(ap==='am'&&h===12)h=0;
-  else if(ap!=='am'&&ap!=='pm'){const oh=Math.floor(toMin(S.hours.open)/60);if(h<oh&&h<12)h+=12;}
+  // No am/pm said: "at 3" in a barbershop means 3 pm, but "at 8" with an 8 pm close still means 8 am.
+  else if(ap!=='am'&&ap!=='pm'){const oh=Math.floor(toMin(S.hours.open)/60);if(h<oh&&h<12&&(h+12)*60+mi<toMin(S.hours.close))h+=12;}
   if(h>23||mi>59)return null;return fromMin(h*60+mi);}
 function findTime(t,bare){
   const tries=[[/\bhalf (?:past )?(\d{1,2})\b/,m=>fixH(+m[1],30)],[/\bquarter past (\d{1,2})\b/,m=>fixH(+m[1],15)],[/\bquarter to (\d{1,2})\b/,m=>fixH(+m[1]-1,45)],
@@ -425,7 +483,10 @@ function findDate(t){const T=today();
   if(/\btomorrow\b/.test(t))return{d:addDays(T,1),label:'tomorrow'};
   for(let i=0;i<7;i++)if(new RegExp('\\b'+DAYS[i]+'\\b').test(t)){let diff=(i-parseYmd(T).getDay()+7)%7||7;return{d:addDays(T,diff),label:'on '+cap(DAYS[i])};}
   return{d:T,label:'today'};}
-function leastBusy(d,time){let best=S.staff[0],bc=1e9;for(const s of S.staff){const c=S.bookings.filter(b=>b.date===d&&b.staffId===s.id&&b.status==='waiting'&&(!time||b.time===time)).length;if(c<bc){bc=c;best=s;}}return best;}
+// Pick a barber: someone free at that time if possible, then whoever has the fewest customers that day.
+function leastBusy(d,time,dur){
+  let pool=S.staff;if(time){const f=freeStaff(d,toMin(time),dur||30);if(f.length)pool=f;}
+  let best=pool[0],bc=1e9;for(const s of pool){const c=S.bookings.filter(b=>b.date===d&&b.staffId===s.id&&b.status==='waiting').length;if(c<bc){bc=c;best=s;}}return best;}
 const firstNum=t=>{const m=t.match(/\b(\d+(?:\.\d{1,2})?)\b/);return m?parseFloat(m[1]):null;};
 
 function runCommand(raw){
@@ -484,7 +545,7 @@ function runCommand(raw){
     const nameW=findName(t,svcWords,staff),meth=has(/\b(card|tap|tapped|revolut)\b/)?'card':'cash';
     const parts=nameW.toLowerCase().split(' ').filter(Boolean);
     const b=parts.length?S.bookings.filter(b=>b.date===T&&b.status==='waiting').sort((a,c)=>(a.walkin-c.walkin)||String(a.time).localeCompare(String(c.time))).find(b=>b.name.toLowerCase().split(/\s+/).some(w=>parts.includes(w))):null;
-    if(b){if(amount)b.price=amount;payBooking(b.id,meth);render();return reply(`${b.name} paid ${eur(b.price)} by ${meth}.`);}
+    if(b){const said=amount??firstNum(t);if(said>0)b.price=said;payBooking(b.id,meth);render();return reply(`${b.name} paid ${eur(b.price)} by ${meth}.`);}
     const num=amount??firstNum(t);
     if(num){addTx('in',num,meth,nameW||(svc?svc.name:'Payment'),'other');render();return reply(`${eur(num)} by ${meth} recorded.`);}
     if(nameW)return reply(`I couldn't find a booking for ${nameW} today.`);}
@@ -496,11 +557,15 @@ function runCommand(raw){
     if(!tm)return reply('What time? Try "Conor fade tomorrow at 3".');
     const tt=t.replace(tm.raw,' '),date=findDate(tt),name=findName(tt,svcWords,staff);
     if(!name)return reply('Who is it for? Say a name, like "Conor fade at 3".');
-    const s=svc||S.services[0],st=staff||leastBusy(date.d,tm.time);
-    const clash=S.bookings.filter(b=>b.date===date.d&&b.time===tm.time&&b.status!=='noshow').length;
-    S.bookings.push({id:uid(),date:date.d,time:tm.time,walkin:false,name,serviceId:s.id,staffId:st.id,price:s.price,status:'waiting',created:Date.now()});
+    const s=svc||S.services[0],start=toMin(tm.time),st=staff||leastBusy(date.d,tm.time,s.dur);
+    const cl=clashes(date.d,st.id,start,s.dur);
+    S.bookings.push({id:uid(),date:date.d,time:tm.time,walkin:false,name,serviceId:s.id,staffId:st.id,price:s.price,dur:s.dur,status:'waiting',created:Date.now()});
     save();UI.date=date.d;if(UI.tab!=='today')UI.tab='today';render();
-    return reply(`Booked ${name} for a ${s.name.toLowerCase()} ${date.label} at ${tm.time}${S.staff.length>1?' with '+st.name:''}.${clash>=S.staff.length?' Heads up: that time was already full.':''}`);}
+    let warn='';
+    if(cl.length)warn=` Heads up: it overlaps ${cl[0].name} at ${cl[0].time}.`;
+    else if(!inHours(start,s.dur))warn=' Heads up: that is outside opening hours.';
+    else if(date.d===T&&start<toMin(nowHM()))warn=' Heads up: that time has already passed today.';
+    return reply(`Booked ${name} for a ${s.name.toLowerCase()} ${date.label} at ${tm.time}${S.staff.length>1?' with '+st.name:''}.${warn}`);}
 
   return reply(`Sorry, I didn't get that. Try "Conor fade at 3" or "25 euro cash".`);}
 
@@ -508,6 +573,9 @@ function runCommand(raw){
 const ACT={
   tab:el=>{UI.tab=el.dataset.tab;if(UI.tab==='today'&&UI.date<today())UI.date=today();render();window.scrollTo(0,0);},
   pickDay:el=>{UI.date=el.dataset.d;render();},
+  weekPrev:()=>{UI.date=addDays(UI.date,-7);render();},
+  weekNext:()=>{UI.date=addDays(UI.date,7);render();},
+  goToday:()=>{UI.date=today();render();},
   newBooking:el=>bookingForm(null,{time:el.dataset.time||''}),
   newWalkin:()=>bookingForm(null,{walkin:true}),
   saveBooking:(el,id)=>saveBooking(id),
@@ -526,7 +594,7 @@ const ACT={
   delTx:(el,id)=>{if(!confirm('Delete this transaction?'))return;const x=S.tx.find(t=>t.id===id);if(x&&x.bookingId){const b=S.bookings.find(b=>b.id===x.bookingId);if(b){b.status='waiting';b.paidBy=null;}}S.tx=S.tx.filter(t=>t.id!==id);save();closeSheet();render();},
   wkPrev:()=>{UI.staffWeek=addDays(UI.staffWeek,-7);render();},wkNext:()=>{UI.staffWeek=addDays(UI.staffWeek,7);render();},
   staffPay:(el,id)=>staffPayForm(id,el.dataset.k),saveStaffPay:(el,id)=>saveStaffPay(id,el.dataset.k),
-  addSvc:()=>{S.services.push({id:uid(),name:'New service',price:0});save();render();},
+  addSvc:()=>{S.services.push({id:uid(),name:'New service',price:0,dur:30});save();render();const n=document.querySelectorAll('[data-set=svcName]');const last=n[n.length-1];if(last){last.focus();last.select();}},
   delSvc:(el,id)=>{if(S.services.length<2)return toast('Keep at least one service');S.services=S.services.filter(s=>s.id!==id);save();render();},
   addStaff:()=>{S.staff.push({id:uid(),name:'New barber',pay:'commission',rate:40,wage:0});save();render();},
   delStaff:(el,id)=>{if(!confirm('Remove this barber? Past records stay.'))return;S.staff=S.staff.filter(s=>s.id!==id);save();render();},
@@ -543,14 +611,22 @@ document.addEventListener('change',e=>{
   const el=e.target;if(el.id==='importFile')return doImport(el);
   const k=el.dataset.set;if(!k)return;const id=el.dataset.id,v=el.type==='checkbox'?el.checked:el.value;
   const sv=id&&S.services.find(s=>s.id===id),st=id&&S.staff.find(s=>s.id===id);
-  switch(k){case'shop':S.shop=v.trim()||'My Barbershop';break;case'svcName':sv.name=v.trim()||sv.name;break;case'svcPrice':sv.price=parseFloat(v)||0;break;
-    case'stName':st.name=v.trim()||st.name;break;case'stPay':st.pay=v;break;case'stRate':st.rate=parseFloat(v)||0;break;case'stWage':st.wage=parseFloat(v)||0;break;
-    case'open':if(v)S.hours.open=v;break;case'close':if(v)S.hours.close=v;break;case'slot':S.hours.slot=+v;break;case'voiceReply':S.voiceReply=v;break;}
+  const num=x=>Math.max(0,parseFloat(x)||0);
+  switch(k){case'shop':S.shop=v.trim()||'My Barbershop';break;case'svcName':sv.name=v.trim()||sv.name;el.value=sv.name;break;case'svcPrice':sv.price=num(v);el.value=sv.price;break;case'svcDur':sv.dur=+v||30;break;
+    case'stName':st.name=v.trim()||st.name;el.value=st.name;break;case'stPay':st.pay=v;break;case'stRate':st.rate=Math.min(100,num(v));el.value=st.rate;break;case'stWage':st.wage=num(v);el.value=st.wage;break;
+    case'open':case'close':{const o=k==='open'?v:S.hours.open,c=k==='close'?v:S.hours.close;
+      if(toMin(c)<=toMin(o)){el.value=S.hours[k];return toast('Closing time must be after opening time');}
+      S.hours.open=o;S.hours.close=c;break;}
+    case'slot':S.hours.slot=+v;break;case'voiceReply':S.voiceReply=v;break;}
   save();if(k==='stPay'||k==='shop')render();toast('Saved');});
 
 /* ---------- start ---------- */
 load();render();
-setInterval(()=>{if(UI.tab==='today'&&!$('#sheet').classList.contains('open'))render();},60000);
+// Refresh every minute; after midnight, move "today" along so the app doesn't stay stuck on yesterday.
+let lastDay=today();
+setInterval(()=>{const T=today();
+  if(T!==lastDay){if(UI.date===lastDay)UI.date=T;if(UI.tillDate===lastDay)UI.tillDate=T;if(UI.staffWeek===weekStart(lastDay))UI.staffWeek=weekStart(T);lastDay=T;}
+  if(UI.tab==='today'&&!$('#sheet').classList.contains('open')&&!document.activeElement.matches('input,select'))render();},60000);
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
