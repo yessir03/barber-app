@@ -108,6 +108,14 @@ const Sync = (() => {
       const { data, error } = await client.from('shops').select('data').eq('owner', user.id).maybeSingle();
       if (error) throw error;
       const remote = data ? migrate(data.data) : null;
+      if (S.acct !== user.id) {
+        // First sync of this account on this device: the cloud is the source of truth.
+        // We never mix this device's own earlier data in; we put it aside in case it's ever needed.
+        try { localStorage.setItem(KEY + '-before-signin', JSON.stringify(S)); } catch (e) {}
+        if (remote) { S = remote; }
+        S.acct = user.id; S.demo = false;
+        snapshot(); writeLocal(); UI.date = today(); safeRender();
+      }
       if (remote) {
         const merged = merge(S, remote);
         if (fingerprint(merged) !== fingerprint(S)) { S = migrate(merged); snapshot(); writeLocal(); safeRender(); }
