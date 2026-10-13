@@ -406,7 +406,7 @@ function viewSettings(){
   <div class="card"><h2 style="margin-bottom:6px">Backup</h2><p class="sub" style="margin-top:0">Everything is stored on this phone only. Save a backup file now and then, and before switching phones.</p><div class="grid2" style="margin:0"><button class="btn ghost" data-act="export">Save backup</button><button class="btn ghost" data-act="import">Restore</button></div><input type="file" id="importFile" accept="application/json,.json" hidden></div>
   <div class="card"><h2 style="margin-bottom:12px">Data</h2><div class="grid2" style="margin:0"><button class="btn ghost" data-act="sample">Load sample data</button><button class="btn ghost danger" data-act="wipe">Erase everything</button></div></div>
   <div class="card"><h2 style="margin-bottom:6px">Add to home screen</h2><p class="sub" style="margin:0">iPhone: open in Safari → Share → <b>Add to Home Screen</b>. Android: Chrome menu → <b>Add to Home screen</b>.</p></div>
-  <p class="foot">Chairside v1.2</p>`;}
+  <p class="foot">Chairside v1.3</p>`;}
 function doExport(){const blob=new Blob([JSON.stringify(S)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`chairside-backup-${today()}.json`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);toast('Backup saved');}
 function doImport(input){const f=input.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!Array.isArray(o.services)||!Array.isArray(o.bookings)||!Array.isArray(o.tx))throw 0;
@@ -438,7 +438,13 @@ const MIC_ERR={
   'network':['No connection','Voice needs internet. Type the command below instead.'],
   'no-speech':["Didn't hear anything",'Tap the mic and speak a bit closer.'],
   'language-not-supported':['Language not supported','Trying again in another English…']};
-let micLang='en-IE';
+// iPhone refuses voice for an English variant it has no dictation language for, so we try others in turn
+// and remember the one that worked.
+const MIC_LANGS=['en-IE','en-GB','en-US'];
+let micLang=(()=>{try{return localStorage.getItem('chairside-miclang')||'en-IE';}catch(e){return'en-IE';}})();
+const nextLang=()=>MIC_LANGS[MIC_LANGS.indexOf(micLang)+1];
+function keyboardFallback(){const i=$('#cmdText');if(i){i.focus();}
+  setMic('Use your keyboard mic instead','Tap the 🎤 on the keyboard that just opened and say the command, then tap Send.');}
 function toggleMic(){
   if(!SR){setMic('Voice not available here','Open this page in Safari (iPhone) or Chrome (Android). Or tap the box below and use the 🎤 on your keyboard.');return;}
   if(listening){try{rec.stop();}catch(e){}return;}
@@ -446,11 +452,16 @@ function toggleMic(){
   const finish=()=>{if(done)return;done=true;listening=false;$('#micBtn')&&$('#micBtn').classList.remove('live');
     if(heard.trim())runCommand(heard.trim());else if(!failed)setMic("Didn't hear anything",'Tap the mic and try again, or type below.');};
   rec.onstart=()=>{listening=true;$('#micBtn')&&$('#micBtn').classList.add('live');setMic('Listening…',"Tap again when you're done");};
-  rec.onresult=e=>{let s='';for(const r of e.results)s+=r[0].transcript;heard=s;setMic('“'+s+'”','');
+  rec.onresult=e=>{try{localStorage.setItem('chairside-miclang',micLang);}catch(x){}let s='';for(const r of e.results)s+=r[0].transcript;heard=s;setMic('“'+s+'”','');
     // iPhone often never ends on its own: run as soon as a final result arrives.
     if(e.results[e.results.length-1].isFinal){try{rec.stop();}catch(x){}finish();}};
-  rec.onerror=e=>{failed=true;const m=MIC_ERR[e.error]||['Voice failed ('+e.error+')','Try again, or type the command below.'];setMic(m[0],m[1]);
-    if(e.error==='language-not-supported'&&micLang!=='en-US'){micLang=micLang==='en-IE'?'en-GB':'en-US';done=true;listening=false;setTimeout(toggleMic,300);}};
+  rec.onerror=e=>{failed=true;
+    if(e.error==='service-not-allowed'||e.error==='language-not-supported'){
+      const nx=nextLang();
+      if(nx){micLang=nx;setMic('One more try','Tap the mic again — trying '+(nx==='en-GB'?'UK':'US')+' English.');}
+      else{micLang=MIC_LANGS[0];keyboardFallback();}
+      return;}
+    const m=MIC_ERR[e.error]||['Voice failed ('+e.error+')','Try again, or type the command below.'];setMic(m[0],m[1]);};
   rec.onend=finish;
   try{rec.start();}catch(e){setMic('Could not start the microphone','Close other apps using the mic and try again.');}}
 function stopMic(){if(listening&&rec){listening=false;rec.onend=null;rec.onresult=null;try{rec.abort();}catch(e){}}}
