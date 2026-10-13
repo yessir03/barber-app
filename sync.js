@@ -55,24 +55,29 @@ const Sync = (() => {
   function merge(a, b) {
     const out = Object.assign({}, a), del = Object.assign({}, a.del || {});
     for (const [id, t] of Object.entries(b.del || {})) if (!(del[id] >= t)) del[id] = t;
+    // Newest change wins. On a tie (e.g. both copies were edited before change times existed)
+    // the cloud copy (b) wins, so every phone ends up the same instead of each keeping its own.
     for (const c of COLS) {
       const m = new Map();
-      for (const it of [...(a[c] || []), ...(b[c] || [])]) {
+      for (const it of (a[c] || [])) m.set(it.id, it);
+      for (const it of (b[c] || [])) {
         const cur = m.get(it.id);
-        if (!cur || (it.u || 0) > (cur.u || 0)) m.set(it.id, it);
+        if (!cur || (it.u || 0) >= (cur.u || 0)) m.set(it.id, it);
       }
       out[c] = [...m.values()].filter(it => !(del[it.id] >= (it.u || 0)));
     }
-    if ((b.su || 0) > (a.su || 0)) { for (const k of SETTINGS) out[k] = b[k]; out.su = b.su; }
+    if ((b.su || 0) >= (a.su || 0)) { for (const k of SETTINGS) out[k] = b[k]; out.su = b.su; }
     out.del = del; out.demo = false;
     if (!out.staff.length) out.staff = a.staff.length ? a.staff : b.staff;
     if (!out.services.length) out.services = a.services.length ? a.services : b.services;
     return out;
   }
-  // A short fingerprint of what a copy contains, so we only upload when something really changed.
+  // A short fingerprint of what a copy contains (including the actual values),
+  // so we only upload when something really differs.
+  const hash = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = (h * 33 ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
   const fingerprint = d => JSON.stringify([
-    ...COLS.map(c => (d[c] || []).map(it => it.id + ':' + (it.u || 0)).sort()),
-    d.su || 0, Object.keys(d.del || {}).sort()]);
+    ...COLS.map(c => (d[c] || []).map(it => it.id + ':' + (it.u || 0) + ':' + hash(keyOf(it))).sort()),
+    d.su || 0, hash(settingsKey(d)), Object.keys(d.del || {}).sort()]);
 
   /* ---------- talking to Supabase ---------- */
   function loadLib() {
