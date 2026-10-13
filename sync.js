@@ -228,8 +228,8 @@ const Sync = (() => {
     return 'wait';
   }
   function loginView(mode) {
-    if (mode === 'wait') return `<div class="login"><div class="logo big">C</div><p class="sub">Loading…</p></div>`;
-    return `<div class="login"><div class="logo big">C</div><h1>Chairside</h1><p class="sub center" style="margin:4px 0 22px">Bookings, walk-ins, till and staff pay for your barbershop.</p>
+    if (mode === 'wait') return `<div class="login"><img class="logo big" src="icon-192.png" alt=""><p class="sub">Loading…</p></div>`;
+    return `<div class="login"><img class="logo big" src="icon-192.png" alt=""><h1>Chairside</h1><p class="sub center" style="margin:4px 0 22px">Bookings, walk-ins, till and staff pay for your barbershop.</p>
       <div class="card" style="width:100%">
       <label>Email<input id="c_email" type="email" autocomplete="username" inputmode="email" autocapitalize="off"></label>
       <label>Password<input id="c_pass" type="password" autocomplete="current-password" minlength="8"></label>
