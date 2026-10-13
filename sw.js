@@ -1,7 +1,7 @@
 // Offline support: always try the network first (so updates show up),
 // fall back to the saved copy when there's no signal.
-const CACHE = 'chairside-v1.4';
-const FILES = ['./', './index.html', './manifest.json', './sync.js', './icon-180.png', './icon-192.png', './icon-512.png'];
+const CACHE = 'chairside-v1.5';
+const FILES = ['./', './index.html', './manifest.json', './sync.js', './supabase.js', './icon-180.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));

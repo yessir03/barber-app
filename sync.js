@@ -16,10 +16,10 @@ const SUPABASE_KEY = 'sb_publishable_XbaV0qkXG-fyuK5Z8s4GVw_0os2X0VK';
 const Sync = (() => {
   const COLS = ['bookings', 'tx', 'services', 'staff'];   // lists merged record by record
   const SETTINGS = ['shop', 'hours', 'voiceReply'];        // merged as one block (newest wins)
-  const LIB = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  const LIB = 'supabase.js';   // kept inside the app so it also loads with no internet
 
   let client = null, user = null;
-  let state = 'off';            // off | signedout | syncing | synced | offline | error
+  let state = 'loading';        // loading | off | signedout | syncing | synced | offline | error
   let lastSync = 0, lastError = '';
   let busy = false, again = false, debounce = null;
   let prev = {}, prevSettings = '';
@@ -102,7 +102,6 @@ const Sync = (() => {
     if (busy) { again = true; return; }
     busy = true; state = 'syncing'; refresh();
     // Never upload sample data: a signed-in phone that still shows samples starts clean instead.
-    if (S.demo) { S = baseData(); snapshot(); writeLocal(); UI.date = today(); safeRender(); }
     try {
       if (!navigator.onLine) throw Object.assign(new Error('offline'), { offline: true });
       const { data, error } = await client.from('shops').select('data').eq('owner', user.id).maybeSingle();
@@ -112,9 +111,14 @@ const Sync = (() => {
         // First sync of this account on this device: the cloud is the source of truth.
         // We never mix this device's own earlier data in; we put it aside in case it's ever needed.
         try { localStorage.setItem(KEY + '-before-signin', JSON.stringify(S)); } catch (e) {}
-        if (remote) { S = remote; }
+        const newShop = !remote;
+        if (remote) S = remote;
+        // A brand-new shop: keep data entered before accounts existed, but never another account's data.
+        else if (S.acct || S.demo) S = baseData();
         S.acct = user.id; S.demo = false;
-        snapshot(); writeLocal(); UI.date = today(); safeRender();
+        snapshot(); writeLocal(); UI.date = today();
+        if (newShop) { UI.tab = 'settings'; setTimeout(() => toast('Welcome! Set your shop name, prices and team'), 400); }
+        render();
       }
       if (remote) {
         const merged = merge(S, remote);
@@ -136,19 +140,20 @@ const Sync = (() => {
   }
 
   function changed() {
-    if (!user || S.demo) return;
+    if (!user) return;
     clearTimeout(debounce); debounce = setTimeout(syncNow, 1200);
   }
 
   async function init() {
-    snapshot();
-    if (!configured()) { state = 'off'; return; }
-    try { await loadLib(); } catch (e) { state = 'offline'; refresh(); window.addEventListener('online', init, { once: true }); return; }
+    snapshot(); render();
+    if (!configured()) { state = 'off'; render(); return; }
+    try { await loadLib(); } catch (e) { state = 'offline'; render(); window.addEventListener('online', init, { once: true }); return; }
     client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     client.auth.onAuthStateChange((event, session) => {
       user = session ? session.user : null;
       if (event === 'PASSWORD_RECOVERY') setTimeout(askNewPassword, 300);
-      if (!user) { state = 'signedout'; refresh(); return; }
+      if (!user) { const was = state; state = 'signedout'; if (was !== 'signedout') render(); return; }
+      if (state === 'loading' || state === 'signedout') { state = 'syncing'; render(); }
       if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') setTimeout(syncNow, 50);
     });
     setInterval(() => { if (user && document.visibilityState === 'visible') syncNow(); }, 20000);
@@ -169,8 +174,8 @@ const Sync = (() => {
       ? await client.auth.signUp({ email, password, options: { emailRedirectTo: redirect } })
       : await client.auth.signInWithPassword({ email, password });
     if (r.error) return toast(r.error.message);
-    if (create && !r.data.session) return toast('Check your email and tap the link, then sign in here');
-    toast('Signed in — syncing');
+    if (create && !r.data.session) { showNote('Almost there! We sent a link to ' + email + '. Tap it, then sign in here.'); return; }
+    toast('Signed in');
   }
   async function forgot() {
     const email = val('c_email').trim();
@@ -185,9 +190,14 @@ const Sync = (() => {
     toast(error ? error.message : 'Password updated');
   }
   async function signOut() {
-    if (!confirm('Sign out on this phone? Your data stays saved in the cloud and on this phone.')) return;
-    await client.auth.signOut(); user = null; state = 'signedout'; refresh();
+    if (!confirm('Sign out on this phone? Your shop stays saved in the cloud.')) return;
+    await syncNow();
+    if (state !== 'synced' && !confirm('Some changes could not be uploaded yet (no connection?). Sign out anyway and lose them?')) return;
+    await client.auth.signOut(); user = null; state = 'signedout';
+    // Remove the shop's data from this phone so the next person can't see it. It's all in the cloud.
+    S = baseData(); snapshot(); writeLocal(); UI.tab = 'today'; UI.date = today(); render();
   }
+  function showNote(msg) { const n = document.getElementById('loginNote'); if (n) { n.hidden = false; n.textContent = msg; } else toast(msg); }
 
   /* ---------- UI ---------- */
   function ago(t) {
@@ -200,21 +210,39 @@ const Sync = (() => {
   function badge() { return user ? ' · ' + ({ syncing: 'Syncing…', synced: 'Synced', offline: 'Offline', error: 'Not synced' }[state] || '') : ''; }
   function card() {
     if (!configured()) return '';
-    if (!user) return `<div class="card"><h2 style="margin-bottom:6px">Cloud backup & other phones</h2>
-      <p class="sub" style="margin-top:0">Sign in to back everything up and use the same shop on more than one phone. Use the same login on every phone in the shop.</p>
-      <label>Email<input id="c_email" type="email" autocomplete="username" inputmode="email"></label>
-      <label>Password<input id="c_pass" type="password" autocomplete="current-password" minlength="8"></label>
-      <div class="grid2" style="margin:0"><button class="btn" data-act="cloudIn">Sign in</button><button class="btn ghost" data-act="cloudUp">Create account</button></div>
-      <button class="linkbtn" style="margin-top:8px" data-act="cloudForgot">Forgot password?</button></div>`;
-    return `<div class="card"><h2 style="margin-bottom:6px">Cloud backup & other phones</h2>
-      <div class="kv" style="margin-bottom:12px"><span>Account</span><b>${esc(user.email || '')}</b><span>Status</span><b class="${state === 'error' ? 'red' : state === 'synced' ? 'green' : ''}">${esc(status())}</b></div>
+    const who = user ? user.email : '';
+    return `<div class="card"><h2 style="margin-bottom:6px">Account & sync</h2>
+      <div class="kv" style="margin-bottom:12px"><span>Account</span><b>${esc(who || '—')}</b><span>Status</span><b class="${state === 'error' ? 'red' : state === 'synced' ? 'green' : ''}">${esc(status())}</b></div>
       ${state === 'error' && lastError ? `<p class="sub red" style="margin-top:0">${esc(lastError)}</p>` : ''}
-      <div class="grid2" style="margin:0"><button class="btn ghost" data-act="cloudSync">Sync now</button><button class="btn ghost danger" data-act="cloudOut">Sign out</button></div></div>`;
+      <p class="sub" style="margin-top:0">Sign in with this same account on every phone in the shop to share bookings, till and staff.</p>
+      <div class="grid2" style="margin:0"><button class="btn ghost" data-act="cloudSync">Sync now</button><button class="btn ghost danger" data-act="cloudOut" ${user ? '' : 'disabled'}>Sign out</button></div>
+      <div class="center" style="margin-top:12px"><button class="linkbtn" data-act="export">Download a copy</button> · <button class="linkbtn" data-act="import">Restore from a copy</button></div></div>`;
+  }
+  // What the app should show instead of the shop: the sign-in screen, a loading screen, or nothing (= open).
+  function gate() {
+    if (!configured()) return false;
+    if (user) return false;
+    if (state === 'signedout') return 'login';
+    // Still starting up (or offline): a phone that was signed in before opens straight away.
+    if (S.acct) return false;
+    return 'wait';
+  }
+  function loginView(mode) {
+    if (mode === 'wait') return `<div class="login"><div class="logo big">C</div><p class="sub">Loading…</p></div>`;
+    return `<div class="login"><div class="logo big">C</div><h1>Chairside</h1><p class="sub center" style="margin:4px 0 22px">Bookings, walk-ins, till and staff pay for your barbershop.</p>
+      <div class="card" style="width:100%">
+      <label>Email<input id="c_email" type="email" autocomplete="username" inputmode="email" autocapitalize="off"></label>
+      <label>Password<input id="c_pass" type="password" autocomplete="current-password" minlength="8"></label>
+      <button class="btn full" data-act="cloudIn">Sign in</button>
+      <button class="btn ghost full" data-act="cloudUp" style="margin-top:8px">Create a new shop account</button>
+      <div class="center" style="margin-top:10px"><button class="linkbtn" data-act="cloudForgot">Forgot password?</button></div>
+      <div class="answer" id="loginNote" hidden></div></div>
+      <p class="sub center">Everyone in the shop signs in with the same account.</p></div>`;
   }
   function refresh() {
     const l = document.getElementById('todayLabel');
     if (l) l.textContent = new Date().toLocaleDateString('en-IE', { weekday: 'long', day: 'numeric', month: 'long' }) + badge();
-    if (UI.tab === 'settings' && !document.querySelector('#sheet.open') && !(document.activeElement && document.activeElement.matches('#c_email,#c_pass'))) safeRender();
+    if (UI.tab === 'settings' && !gate() && !document.querySelector('#sheet.open') && !(document.activeElement && document.activeElement.matches('input,select'))) safeRender();
   }
 
   Object.assign(ACT, {
@@ -222,7 +250,7 @@ const Sync = (() => {
     cloudOut: signOut, cloudSync: () => syncNow()
   });
 
-  return { init, stamp, snapshot, changed, card, badge, signedIn: () => !!user, syncNow, _merge: merge };
+  return { init, stamp, snapshot, changed, card, badge, gate, loginView, signedIn: () => !!user, syncNow, _merge: merge };
 })();
 
 Sync.init();
