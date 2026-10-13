@@ -226,6 +226,8 @@ const durTxt=m=>m<60?m+' min':Math.floor(m/60)+'h'+(m%60?' '+(m%60)+'m':'');
 const DURS=[5,10,15,20,25,30,35,40,45,50,55,60,75,90,105,120,150,180];
 const durOptions=sel=>{const list=DURS.includes(+sel)?DURS:[...DURS,+sel].sort((a,b)=>a-b);return list.map(m=>`<option value="${m}" ${m===+sel?'selected':''}>${durTxt(m)}</option>`).join('');};
 // Bookings for one barber that overlap a time window (minutes from midnight).
+// How to describe something in the way, in a warning.
+const clashTxt=c=>c.block?`${c.name==='Blocked'?'blocked time':c.name+' (blocked)'} ${c.time}–${c.end}`:`${c.name} at ${c.time}`;
 /* Blocked time: a barber (or the whole shop) is unavailable, once or every week on the same day.
    { id, staffId: 'all' | staff id, repeat: 'once' | 'weekly', date (once) / dow + from (weekly), start, end, note } */
 const DOW=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -241,7 +243,7 @@ function clashes(date,staffId,start,dur,excludeId){
   const bk=S.bookings.filter(b=>b.id!==excludeId&&b.date===date&&b.staffId===staffId&&!b.walkin&&b.time&&b.status!=='noshow')
     .filter(b=>{const s=toMin(b.time);return s<start+dur&&start<s+durOf(b);});
   const bl=blocksOn(date,staffId).filter(k=>toMin(k.start)<start+dur&&start<toMin(k.end))
-    .map(k=>({id:k.id,name:blockLabel(k),time:k.start,block:true}));
+    .map(k=>({id:k.id,name:blockLabel(k),time:k.start,end:k.end,block:true}));
   return [...bl,...bk];}
 const freeStaff=(date,start,dur,excludeId)=>S.staff.filter(s=>!clashes(date,s.id,start,dur,excludeId).length);
 const inHours=(start,dur)=>start>=toMin(S.hours.open)&&start+dur<=toMin(S.hours.close);
@@ -405,11 +407,11 @@ function bookingForm(b,preset){
     const times=[];for(let m=o;m<c;m+=step)times.push(fromMin(m));
     if(keep&&!times.includes(keep))times.push(keep),times.sort();
     $('#f_time').innerHTML=(keep?'':'<option value="">Pick a time</option>')+times.map(t=>{const cl=clashes(date,staff,toMin(t),dur,editId),late=!inHours(toMin(t),dur);
-      return`<option value="${t}" ${t===keep?'selected':''}>${t}${cl.length?(cl[0].block?' · '+esc(cl[0].name.toLowerCase()):' · busy'):late?' · after closing':''}</option>`;}).join('');
+      return`<option value="${t}" ${t===keep?'selected':''}>${t}${cl.length?(cl[0].block?' · '+esc(cl[0].name==='Blocked'?'blocked':cl[0].name.toLowerCase()):' · busy'):late?' · after closing':''}</option>`;}).join('');
     hint();};
   const hint=()=>{const t=$('#f_time').value,dur=+$('#f_dur').value;if(!t){$('#f_hint').textContent='';return;}
     const date=$('#f_date').value||today(),staff=$('#f_staff')?$('#f_staff').value:S.staff[0].id,cl=clashes(date,staff,toMin(t),dur,editId);
-    $('#f_hint').textContent=`${t} – ${fromMin(toMin(t)+dur)}`+(cl.length?` · overlaps ${cl[0].name} (${cl[0].time})`:'');
+    $('#f_hint').textContent=`${t} – ${fromMin(toMin(t)+dur)}`+(cl.length?` · clashes with ${clashTxt(cl[0])}`:'');
     $('#f_hint').className='sub'+(cl.length?' red':'');};
   fillTimes(b.time||'');
   $('#f_svc').onchange=e=>{const s=svcById(e.target.value);if(s){$('#f_price').value=s.price;$('#f_dur').innerHTML=durOptions(s.dur);}fillTimes($('#f_time').value);};
@@ -423,7 +425,7 @@ function saveBooking(id){
   const data={name,phone:$('#f_phone').value.trim(),serviceId:$('#f_svc').value,staffId:$('#f_staff')?$('#f_staff').value:S.staff[0].id,
     date:$('#f_date').value||today(),time:walk?null:time,walkin:walk,price,dur:+$('#f_dur').value||30};
   if(!walk){const cl=clashes(data.date,data.staffId,toMin(time),data.dur,id);
-    if(cl.length&&!confirm(`This overlaps ${cl[0].name} at ${cl[0].time}. Book anyway?`))return;
+    if(cl.length&&!confirm(`This clashes with ${clashTxt(cl[0])}. Book anyway?`))return;
     if(!cl.length&&!inHours(toMin(time),data.dur)&&!confirm('This runs outside opening hours. Book anyway?'))return;}
   if(id){const b=S.bookings.find(b=>b.id===id);Object.assign(b,data);
     // Already paid? Keep the till entry in step with the booking.
@@ -521,7 +523,7 @@ function viewSettings(){
   ${hasSync()?Sync.card():''}${hasSync()?'':`<div class="card"><h2 style="margin-bottom:6px">Backup</h2><p class="sub" style="margin-top:0">${hasSync()&&Sync.signedIn()?'Your data is also backed up in the cloud. A backup file is an extra copy you keep yourself.':'Everything is stored on this phone only. Save a backup file now and then, and before switching phones.'}</p><div class="grid2" style="margin:0"><button class="btn ghost" data-act="export">Save backup</button><button class="btn ghost" data-act="import">Restore</button></div></div>`}
   <div class="card"><h2 style="margin-bottom:12px">Data</h2><button class="btn ghost danger full" data-act="wipe" style="margin:0">Erase everything</button></div><input type="file" id="importFile" accept="application/json,.json" hidden>
   <div class="card"><h2 style="margin-bottom:6px">Add to home screen</h2><p class="sub" style="margin:0">iPhone: open in Safari → Share → <b>Add to Home Screen</b>. Android: Chrome menu → <b>Add to Home screen</b>.</p></div>
-  <p class="foot">Chairside v2.0 · <a href="privacy.html" style="color:inherit">Privacy</a></p>`;}
+  <p class="foot">Chairside v2.0.1 · <a href="privacy.html" style="color:inherit">Privacy</a></p>`;}
 function doExport(){const blob=new Blob([JSON.stringify(S)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`chairside-backup-${today()}.json`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);toast('Backup saved');}
 function doImport(input){const f=input.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!Array.isArray(o.services)||!Array.isArray(o.bookings)||!Array.isArray(o.tx))throw 0;
@@ -659,9 +661,10 @@ function runCommand(raw){
     if(wq.length)msg+=` ${wq.length} walk-in${wq.length>1?'s':''} waiting, first is ${wq[0].name}.`;return reply(msg);}
 
   // blocked time: "block Friday 1 to 2 for prayer", "Sam off every Friday 1 to 2", "close tomorrow all day"
-  if(has(/\b(block|close|closed|shut|unavailable|off)\b/)&&!has(/\b(paid|pay|sold|spent|advance)\b/)){
-    const all=has(/\ball day\b|\bwhole day\b/);
-    const r=t.match(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*(?:to|till|until|-)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\b/);
+  const rng=t.match(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\s*(?:to|till|until|-)\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\b/);
+  const allDay=has(/\ball day\b|\bwhole day\b/);
+  if((has(/\b(block|unavailable)\b/)||(has(/\b(close|closed|shut|closing)\b/)&&(rng||allDay))||(has(/\boff\b/)&&(rng||allDay)))&&!has(/\b(paid|pay|sold|spent|advance|euros?)\b/)){
+    const all=allDay,r=rng;
     if(!r&&!all)return reply('Which times? Try "block Friday 1 to 2".');
     let start=S.hours.open,end=S.hours.close;
     if(r){start=fixH(+r[1],+(r[2]||0),r[3]);end=fixH(+r[4],+(r[5]||0),r[6]);
@@ -672,10 +675,15 @@ function runCommand(raw){
     const nm=t.match(/\b(prayer|prayers|lunch|break|doctor|dentist|appointment|meeting|school|gym|holiday|training)\b/);
     const k={id:uid(),staffId,repeat:weekly?'weekly':'once',start,end,note:nm?cap(nm[1]):''};
     if(weekly){k.dow=parseYmd(dt.d).getDay();k.from=dt.d;}else k.date=dt.d;
+    const dup=blocksOn(weekly?k.from:k.date,staffId==='all'?null:staffId).find(b=>(b.staffId===staffId||b.staffId==='all')&&toMin(b.start)<=toMin(start)&&toMin(b.end)>=toMin(end)&&(!weekly||b.repeat==='weekly'));
+    if(dup)return reply(`That's already blocked (${dup.start}–${dup.end}${dup.repeat==='weekly'?', every '+DOW[dup.dow]:''}).`);
     const c=blockConflicts(k);
     S.blocks=S.blocks||[];S.blocks.push(k);if(!weekly)UI.date=dt.d;UI.tab='today';save();render();
     const whoTxt=who?who.name:(S.staff.length>1?'the shop':'you');
     return reply(`Blocked ${start}–${end} for ${whoTxt} ${weekly?'every '+DOW[k.dow]:dt.label}${k.note?' ('+k.note+')':''}.${c.length?` Heads up: ${c.length} customer${c.length>1?'s are':' is'} already booked in that time.`:''}`);}
+
+  // "close at 5", "we're closed": closing words never become a customer called Close.
+  if(has(/\b(close|closed|closing|shut)\b/)&&!has(/\b(paid|pay|sold|spent|advance|euros?)\b/))return reply('To close part of a day, say the times, like "close Friday 1 to 2" or "close tomorrow all day".');
 
   // staff advance / pay
   const payee=has(/\badvance\b/)?(payStaff||anyStaff):(!findService(t)?payStaff:null);
@@ -730,7 +738,7 @@ function runCommand(raw){
     S.bookings.push({id:uid(),date:date.d,time:tm.time,walkin:false,name,serviceId:s.id,staffId:st.id,price:s.price,dur:s.dur,status:'waiting',created:Date.now()});
     save();UI.date=date.d;if(UI.tab!=='today')UI.tab='today';render();
     let warn='';
-    if(cl.length)warn=` Heads up: it overlaps ${cl[0].name} at ${cl[0].time}.`;
+    if(cl.length)warn=` Heads up: it clashes with ${clashTxt(cl[0])}.`;
     else if(!inHours(start,s.dur))warn=' Heads up: that is outside opening hours.';
     else if(date.d===T&&start<toMin(nowHM()))warn=' Heads up: that time has already passed today.';
     return reply(`Booked ${name} for a ${s.name.toLowerCase()} ${date.label} at ${tm.time}${S.staff.length>1?' with '+st.name:''}.${warn}`);}
@@ -825,6 +833,6 @@ setInterval(()=>{const T=today();
   if(UI.tab==='today'&&!$('#sheet').classList.contains('open')&&!document.activeElement.matches('input,select'))render();},60000);
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
-<script src="sync.js?v=2.0"></script>
+<script src="sync.js?v=2.0.1"></script>
 </body>
 </html>
