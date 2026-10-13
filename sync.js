@@ -237,7 +237,7 @@ const Sync = (() => {
       <button class="btn ghost full" data-act="cloudUp" style="margin-top:8px">Create a new shop account</button>
       <div class="center" style="margin-top:10px"><button class="linkbtn" data-act="cloudForgot">Forgot password?</button></div>
       <div class="answer" id="loginNote" hidden></div></div>
-      <p class="sub center">Everyone in the shop signs in with the same account.</p></div>`;
+      <p class="sub center">Everyone in the shop signs in with the same account.<br>See how your data is handled: <a href="privacy.html" style="color:var(--accent);font-weight:700">Privacy</a></p></div>`;
   }
   function refresh() {
     const l = document.getElementById('todayLabel');

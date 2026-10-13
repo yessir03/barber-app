@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Privacy · Chairside</title>
+<meta name="theme-color" content="#1F5C4A">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#F3F1EC;--card:#fff;--ink:#1B1E1C;--muted:#6B6F6A;--line:#E6E2D9;--accent:#1F5C4A}
+@media (prefers-color-scheme:dark){:root{--bg:#111412;--card:#1B1F1D;--ink:#ECEDEA;--muted:#9AA09A;--line:#2B302D;--accent:#3E9B7C}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:16px;line-height:1.55}
+main{max-width:680px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px 48px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.logo{width:40px;height:40px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
+h1{font-size:26px;margin:0;letter-spacing:-.01em}
+h2{font-size:18px;margin:26px 0 6px}
+p,li{color:var(--ink)}
+.muted{color:var(--muted);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px 18px 8px}
+ul{padding-left:20px;margin:6px 0}
+li{margin:4px 0}
+a{color:var(--accent);font-weight:600}
+.back{display:inline-block;margin-bottom:16px;text-decoration:none}
+</style>
+</head>
+<body>
+<main>
+<a class="back" href="./">‹ Back to Chairside</a>
+<div class="top"><div class="logo">C</div><div><h1>Privacy</h1><div class="muted">Last updated: 13 October 2026</div></div></div>
+
+<div class="card">
+<p><strong>In short:</strong> Chairside stores only what a barbershop needs to run its day. Each shop's data is private to that shop, kept in the EU, never sold, and never used for ads. There are no ads, trackers or analytics in the app.</p>
+
+<h2>Who runs Chairside</h2>
+<p>Chairside is a small independent project run by Yasir in Ireland. Contact: <a href="mailto:gecenemix003@gmail.com">gecenemix003@gmail.com</a>.</p>
+
+<h2>Two kinds of people</h2>
+<ul>
+<li><strong>Shops</strong> – the barbershop that signs in and uses the app.</li>
+<li><strong>Customers</strong> – the people a shop adds as bookings or walk-ins.</li>
+</ul>
+<p>For its customers' details, <strong>the shop decides what to record and is responsible for it</strong> (the "data controller"). Chairside stores and processes that data only so the shop can use the app (the "data processor").</p>
+
+<h2>What is stored</h2>
+<ul>
+<li><strong>Shop account:</strong> email address and password (the password is stored scrambled by our sign-in provider and can't be read by anyone, including us).</li>
+<li><strong>Shop data:</strong> shop name, services and prices, opening hours, staff names and pay settings, money in and out.</li>
+<li><strong>Customer details entered by the shop:</strong> name, optional phone number, booked service, time and price, and whether they paid.</li>
+</ul>
+<p>Please don't enter anything else about customers, such as health details or notes about them as people.</p>
+
+<h2>Why</h2>
+<p>Only to provide the app: show bookings and the till, work out staff pay, keep the shop's phones in sync and back up the data. The legal basis is providing the service the shop signed up for and, for customer details, the shop's legitimate interest in managing its appointments.</p>
+
+<h2>Where it's kept</h2>
+<ul>
+<li><strong>Cloud:</strong> Supabase (database and sign-in), on servers in the EU – West EU (Ireland).</li>
+<li><strong>The app itself</strong> is served by GitHub Pages. It only delivers the app's files; your shop data is not sent there.</li>
+<li><strong>On the phone:</strong> a copy of the shop's data is kept on each signed-in phone so the app works without internet. Signing out removes it from that phone.</li>
+</ul>
+
+<h2>Who can see it</h2>
+<ul>
+<li>Anyone signed in with the shop's account. Every phone in the shop uses the same account, so share the password only with people you trust.</li>
+<li>No other shop can see or change your data. This is enforced by the database's security rules, not just by the app.</li>
+<li>The person running Chairside can technically access the database and will only do so to keep the service working, fix a problem, or when you ask for help.</li>
+</ul>
+<p>Data is never sold or shared for advertising.</p>
+
+<h2>How long it's kept</h2>
+<p>Until the shop deletes it. A shop can delete single bookings and payments in the app, or everything at once with <em>Settings → Erase everything</em>. To close the account and remove all of its data from the cloud, email the contact address above and it will be done within 30 days.</p>
+
+<h2>Cookies and tracking</h2>
+<p>None for tracking. The app saves the shop's data and sign-in on the device (browser storage) so it can work and keep you signed in. That's all.</p>
+
+<h2>Your rights</h2>
+<p>Under the GDPR you can ask to see, correct, download or delete your data, or object to how it's used.</p>
+<ul>
+<li><strong>Shops:</strong> email the contact address above. You can also download a copy yourself in <em>Settings → Download a copy</em>.</li>
+<li><strong>Customers of a shop:</strong> please ask the shop first, since it controls your details. You can also contact us and we'll help.</li>
+</ul>
+<p>If you're unhappy with how your data is handled, you can complain to Ireland's Data Protection Commission at <a href="https://www.dataprotection.ie" rel="noopener">dataprotection.ie</a>.</p>
+
+<h2>If something goes wrong</h2>
+<p>If there is ever a data breach that puts people at risk, affected shops will be told without delay, and the Data Protection Commission within 72 hours, as the law requires.</p>
+
+<h2>Changes</h2>
+<p>If this page changes in a meaningful way, the date at the top will change and signed-in shops will be told in the app.</p>
+</div>
+</main>
+</body>
+</html>
