@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chairside</title>
+<meta name="theme-color" content="#1F5C4A">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Chairside">
+<style>
+:root{--bg:#F3F1EC;--card:#fff;--ink:#1B1E1C;--muted:#6B6F6A;--line:#E6E2D9;--accent:#1F5C4A;--accent-ink:#fff;--accent-soft:#E2EEE8;--brass:#A9762A;--brass-soft:#F5EBD8;--red:#B3412E;--red-soft:#F7E4E0;--green:#1D7A4C;--green-soft:#E1F1E8;--shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px rgba(0,0,0,.04)}
+@media (prefers-color-scheme:dark){:root{--bg:#111412;--card:#1B1F1D;--ink:#ECEDEA;--muted:#9AA09A;--line:#2B302D;--accent:#3E9B7C;--accent-ink:#06120D;--accent-soft:#1D2F28;--brass:#D9A653;--brass-soft:#2E2618;--red:#E2735F;--red-soft:#3A221D;--green:#55C38A;--green-soft:#183026;--shadow:none}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:16px}
+body{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+button,input,select{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(12px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px;max-width:640px;margin:0 auto}
+.logo{width:40px;height:40px;border-radius:12px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
+h1{font-size:20px;margin:0;letter-spacing:-.01em;line-height:1.2}
+h2{font-size:18px;margin:0}
+h3{font-size:22px;margin:4px 0 16px}
+.sub{color:var(--muted);font-size:14px}
+main{padding:0 16px;max-width:640px;margin:0 auto}
+.card{background:var(--card);border-radius:18px;padding:16px;box-shadow:var(--shadow);border:1px solid var(--line);margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.grid2 .card{margin:0}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.big{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:4px 0 2px;font-variant-numeric:tabular-nums}
+.big.xl{font-size:40px}
+.green{color:var(--green)}.red{color:var(--red)}
+.center{text-align:center}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--brass-soft);color:var(--brass);border-radius:16px;padding:12px 14px;margin-bottom:12px;font-size:14px;font-weight:600}
+.strip{display:flex;gap:8px;overflow-x:auto;margin:0 -16px 12px;padding:2px 16px 4px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.day{flex:none;width:60px;border:1px solid var(--line);background:var(--card);border-radius:16px;padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+.day span{font-size:12px;color:var(--muted)}.day b{font-size:20px}.day i{font-style:normal;font-size:9px;color:var(--brass);letter-spacing:1px;height:12px}
+.day.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.day.on span,.day.on i{color:var(--bg)}
+.next{border:2px solid var(--accent);cursor:pointer}
+.next .nm{font-size:24px;font-weight:800}.next .nt{font-size:30px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums}
+.sec{display:flex;align-items:flex-end;justify-content:space-between;margin:22px 2px 10px;gap:10px}
+.rowc{display:flex;align-items:center;gap:14px;cursor:pointer;padding:14px 16px;border-left:4px solid var(--accent)}
+.rowc.done{border-left-color:var(--green);opacity:.75}.rowc.noshow{border-left-color:var(--red);opacity:.6}
+.rt{font-size:18px;font-weight:800;min-width:54px;font-variant-numeric:tabular-nums}
+.rm{flex:1;min-width:0}.nm{font-weight:700;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rr{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.pr{font-weight:800;font-variant-numeric:tabular-nums}
+.pill{font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
+.pill.ok{background:var(--green-soft);color:var(--green)}.pill.bad{background:var(--red-soft);color:var(--red)}
+.ic{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:800;flex:none}
+.ic.in{background:var(--green-soft);color:var(--green)}.ic.out{background:var(--red-soft);color:var(--red)}
+.rowc.tx{border-left:1px solid var(--line)}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:8px}
+.slot{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:10px 0;font-weight:700;color:var(--accent);cursor:pointer;font-variant-numeric:tabular-nums}
+.empty{text-align:center;color:var(--muted)}
+.btn{border:0;border-radius:14px;padding:13px 16px;font-weight:700;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.btn.sm{padding:9px 14px;font-size:14px;border-radius:12px}
+.btn.full{width:100%;margin-top:6px}
+.btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost.danger{color:var(--red)}
+.btn.green{background:var(--green);color:#fff}.btn.red{background:var(--red);color:#fff}
+.btn.icon{width:44px;height:44px;padding:0;font-size:22px;line-height:1}
+.btn:disabled{opacity:.35}
+.banner .btn{background:var(--card);color:var(--brass)}
+.seg{display:flex;background:var(--line);border-radius:14px;padding:4px;margin-bottom:12px}
+.seg button{flex:1;border:0;background:transparent;padding:9px;border-radius:11px;font-weight:700;color:var(--muted);cursor:pointer}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.navrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.breakdown{background:var(--bg);border-radius:14px;padding:12px 14px;margin:12px 0}
+.breakdown div,.mini div{display:flex;justify-content:space-between;padding:4px 0;font-size:15px}
+.breakdown span,.mini span{color:var(--muted)}
+.breakdown .tot{border-top:1px dashed var(--line);margin-top:6px;padding-top:8px;font-size:17px}
+.breakdown .tot span{color:var(--ink);font-weight:700}
+.mini{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px}
+input,select{display:block;width:100%;margin-top:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:16px;min-width:0}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+label.check{display:flex;align-items:center;gap:10px;color:var(--ink);font-size:16px}
+label.check input{width:22px;height:22px;margin:0;accent-color:var(--accent);flex:none}
+.erow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.erow input,.erow select{margin:0}
+.erow .num{width:84px;flex:none}
+label.inl{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 8px}
+label.inl input{width:110px;margin:0}
+.staffedit{padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin-bottom:16px}.kv span{color:var(--muted)}.kv b{text-align:right}
+.kv a{color:var(--accent)}
+.foot{text-align:center;color:var(--muted);font-size:13px;margin:20px 0}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);padding:6px 8px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,1fr);align-items:end;max-width:100%}
+nav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12px;font-weight:600;color:var(--muted);padding:6px 0;cursor:pointer}
+nav button svg{width:24px;height:24px}
+nav button.on{color:var(--accent)}
+nav .mic{width:64px;height:64px;border-radius:50%;background:var(--accent);color:var(--accent-ink);margin:-28px auto 0;justify-content:center;box-shadow:0 6px 20px rgba(31,92,74,.35)}
+nav .mic svg{width:28px;height:28px}
+.sheet{position:fixed;inset:0;z-index:20;visibility:hidden}
+.sheet.open{visibility:visible}
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.4);opacity:0;transition:opacity .2s}
+.sheet.open .sheet-bg{opacity:1}
+.sheet-card{position:absolute;left:0;right:0;bottom:0;max-height:92vh;overflow-y:auto;background:var(--bg);border-radius:24px 24px 0 0;padding:14px 18px calc(24px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .25s ease;max-width:640px;margin:0 auto}
+.sheet.open .sheet-card{transform:none}
+.grab{width:44px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 6px}
+.x{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:12px;border:0;background:var(--line);font-size:22px;cursor:pointer}
+.micbig{display:grid;place-items:center;width:120px;height:120px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);margin:8px auto 14px;cursor:pointer;box-shadow:0 10px 30px rgba(31,92,74,.3)}
+.micbig svg{width:46px;height:46px}
+.micbig.live{background:var(--red);animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(179,65,46,.5)}100%{box-shadow:0 0 0 24px rgba(179,65,46,0)}}
+.answer{background:var(--accent-soft);color:var(--accent);border-radius:14px;padding:12px 14px;margin:14px 0 0;font-weight:600}
+.cmdrow{display:flex;gap:8px;margin-top:16px}.cmdrow input{margin:0}
+.ex{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+#toast{position:fixed;left:50%;bottom:calc(110px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:30;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo" id="logo">C</div>
+  <div><h1 id="shopName">Chairside</h1><div class="sub" id="todayLabel"></div></div>
+</header>
+<main id="view"></main>
+<nav>
+  <button data-act="tab" data-tab="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Today</button>
+  <button data-act="tab" data-tab="till"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="3"/><circle cx="12" cy="12" r="2.5"/></svg>Till</button>
+  <button class="mic" data-act="voice" aria-label="Voice command"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+  <button data-act="tab" data-tab="staff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Staff</button>
+  <button data-act="tab" data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/><circle cx="7" cy="18" r="2" fill="currentColor"/></svg>Settings</button>
+</nav>
+<div class="sheet" id="sheet"><div class="sheet-bg" data-act="closeSheet"></div><div class="sheet-card" id="sheetCard"></div></div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const uid=()=>Math.random().toString(36).slice(2,10);
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today=()=>ymd(new Date());
+const parseYmd=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+const addDays=(s,n)=>{const d=parseYmd(s);d.setDate(d.getDate()+n);return ymd(d);};
+const weekStart=s=>{const d=parseYmd(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return ymd(d);};
+const monthRange=s=>{const d=parseYmd(s);return[ymd(new Date(d.getFullYear(),d.getMonth(),1)),ymd(new Date(d.getFullYear(),d.getMonth()+1,0))];};
+const toMin=t=>{const[h,m]=t.split(':').map(Number);return h*60+m;};
+const fromMin=m=>`${pad(Math.floor(m/60))}:${pad(m%60)}`;
+const nowHM=()=>{const d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes());};
+const sum=a=>a.reduce((x,y)=>x+(+y||0),0);
+const cap=w=>w.charAt(0).toUpperCase()+w.slice(1);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const escRe=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+const eur=n=>{n=Math.round((+n||0)*100)/100;const neg=n<0;n=Math.abs(n);return(neg?'−':'')+'€'+n.toLocaleString('en-IE',{minimumFractionDigits:n%1?2:0,maximumFractionDigits:2});};
+const fmtDay=s=>parseYmd(s).toLocaleDateString('en-IE',{weekday:'short',day:'numeric',month:'short'});
+const short=s=>parseYmd(s).toLocaleDateString('en-IE',{day:'numeric',month:'short'});
+
+/* ---------- data ---------- */
+const KEY='chairside-v1';
+let S;
+function baseData(){return{shop:'My Barbershop',hours:{open:'09:00',close:'19:00',slot:30},voiceReply:true,demo:false,
+  services:[{id:'s1',name:'Haircut',price:20},{id:'s2',name:'Skin fade',price:25},{id:'s3',name:'Beard trim',price:12},{id:'s4',name:'Hair + Beard',price:30},{id:'s5',name:'Kids cut',price:15},{id:'s6',name:'Hot towel shave',price:20}],
+  staff:[{id:'me',name:'Me',pay:'owner',rate:0,wage:0}],bookings:[],tx:[]};}
+function sampleData(){
+  const d=baseData();d.demo=true;d.shop='Fade Street Barbers';
+  d.staff.push({id:'sam',name:'Sam',pay:'both',rate:20,wage:350});
+  const T=today(),ws=weekStart(T),svc=id=>d.services.find(s=>s.id===id);
+  const mk=(date,time,name,sid,staff,status,paid)=>{const s=svc(sid);const b={id:uid(),date,time,walkin:!time,name,serviceId:sid,staffId:staff,price:s.price,status,created:Date.now()+d.bookings.length};
+    if(status==='done'){b.paidBy=paid;d.tx.push({id:uid(),date,time:time||'12:00',type:'in',amount:s.price,method:paid,note:`${name} · ${s.name}`,kind:'service',bookingId:b.id,staffId:staff});}
+    d.bookings.push(b);};
+  const past=['Conor Byrne','Seán Murphy','Darragh Kelly','Cian Walsh','Adam Nolan','Fionn Ryan','Eoin Daly','Luke Kavanagh','Mark Doyle','Tadhg Burke','Niall Quinn','Rory Moran'];
+  let k=0;
+  for(let ds=ws;ds<T;ds=addDays(ds,1))['10:00','11:30','14:00','16:30'].forEach((tm,i)=>mk(ds,tm,past[k++%past.length],['s2','s1','s4','s5'][i],i%2?'sam':'me','done',i%3?'card':'cash'));
+  [['09:30','Liam Walsh','s2','me'],['10:00','Jack Doyle','s1','sam'],['11:00',"Cian O'Brien",'s4','me'],['12:30','Adam Ryan','s5','sam'],['14:00','Oisín Nolan','s2','me'],['15:30','Fionn Daly','s3','sam'],['16:30','Eoin Kavanagh','s1','me'],['17:30','Luke Byrne','s4','sam']]
+    .forEach(([tm,n,sid,st])=>mk(T,tm,n,sid,st,'waiting'));
+  mk(T,null,'Ryan Murphy','s1','me','waiting');mk(T,null,'Darragh Kelly','s2','sam','waiting');
+  [['10:00','Paddy Walsh','s2','me'],['13:00','Kevin Byrne','s4','sam'],['15:00','Shane Kelly','s1','me']].forEach(([tm,n,sid,st])=>mk(addDays(T,1),tm,n,sid,st,'waiting'));
+  d.tx.push({id:uid(),date:ws,time:'18:00',type:'out',amount:50,method:'cash',note:'Sam · Advance',kind:'advance',staffId:'sam'});
+  d.tx.push({id:uid(),date:addDays(T,-1)>=ws?addDays(T,-1):T,time:'13:15',type:'out',amount:38,method:'card',note:'Clipper oil & blades',kind:'expense'});
+  return d;}
+function load(){try{const r=localStorage.getItem(KEY);if(r){S=Object.assign(baseData(),JSON.parse(r));return;}}catch(e){}S=sampleData();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){toast('Could not save on this device');}}
+
+const svcById=id=>S.services.find(s=>s.id===id);
+const staffById=id=>S.staff.find(s=>s.id===id);
+const svcName=b=>{const s=svcById(b.serviceId);return s?s.name:'Service';};
+const staffTag=b=>{if(S.staff.length<2)return'';const s=staffById(b.staffId);return s?' · '+esc(s.name):'';};
+
+function staffCalc(st,ws){
+  const we=addDays(ws,6);
+  const done=S.bookings.filter(b=>b.status==='done'&&b.staffId===st.id&&b.date>=ws&&b.date<=we);
+  const rev=sum(done.map(b=>b.price));
+  const comm=(st.pay==='commission'||st.pay==='both')?rev*(+st.rate||0)/100:0;
+  const wage=(st.pay==='wage'||st.pay==='both')?(+st.wage||0):0;
+  const payments=S.tx.filter(x=>x.staffId===st.id&&x.type==='out'&&x.date>=ws&&x.date<=we);
+  const paid=sum(payments.map(x=>x.amount));
+  return{done,rev,earned:comm+wage,paid,left:comm+wage-paid,payments};}
+
+/* ---------- UI state ---------- */
+const UI={tab:'today',date:today(),tillMode:'day',tillDate:today(),staffWeek:weekStart(today())};
+
+function render(){
+  $('#shopName').textContent=S.shop;
+  $('#logo').textContent=(S.shop.trim()[0]||'C').toUpperCase();
+  $('#todayLabel').textContent=new Date().toLocaleDateString('en-IE',{weekday:'long',day:'numeric',month:'long'});
+  document.querySelectorAll('nav [data-tab]').forEach(b=>b.classList.toggle('on',b.dataset.tab===UI.tab));
+  const v={today:viewToday,till:viewTill,staff:viewStaff,settings:viewSettings}[UI.tab]();
+  $('#view').innerHTML=(S.demo?`<div class="banner"><span>Sample data — tap around freely.</span><button class="btn sm" data-act="startOwn">Use my own</button></div>`:'')+v;
+}
+
+/* ---------- Today ---------- */
+function freeSlots(d){
+  const T=today();if(d<T)return[];
+  const o=toMin(S.hours.open),c=toMin(S.hours.close),st=+S.hours.slot||30,n=Math.max(1,S.staff.length),nm=d===T?toMin(nowHM()):-1,out=[];
+  for(let m=o;m+st<=c;m+=st){if(m<nm)continue;const tm=fromMin(m);
+    if(S.bookings.filter(b=>b.date===d&&!b.walkin&&b.time===tm&&b.status!=='noshow').length<n)out.push(tm);}
+  return out;}
+function rowHtml(b,left){
+  const st={waiting:['waiting','pill'],done:['paid · '+(b.paidBy||''),'pill ok'],noshow:['no-show','pill bad']}[b.status];
+  return`<div class="card rowc ${b.status}" data-act="openBooking" data-id="${b.id}"><div class="rt">${esc(left)}</div><div class="rm"><div class="nm">${esc(b.name)}</div><div class="sub">${esc(svcName(b))}${staffTag(b)}</div></div><div class="rr"><div class="pr">${eur(b.price)}</div><span class="${st[1]}">${st[0]}</span></div></div>`;}
+function viewToday(){
+  const d=UI.date,T=today();
+  const list=S.bookings.filter(b=>b.date===d);
+  const timed=list.filter(b=>!b.walkin).sort((a,b)=>a.time.localeCompare(b.time));
+  const walk=list.filter(b=>b.walkin).sort((a,b)=>(a.status==='waiting'?0:1)-(b.status==='waiting'?0:1)||a.created-b.created);
+  const live=list.filter(b=>b.status!=='noshow');
+  const inn=S.tx.filter(x=>x.date===d&&x.type==='in');
+  const cash=sum(inn.filter(x=>x.method==='cash').map(x=>x.amount)),card=sum(inn.filter(x=>x.method==='card').map(x=>x.amount));
+  let h='<div class="strip">';
+  for(let i=-2;i<=7;i++){const ds=addDays(T,i),dd=parseYmd(ds),n=S.bookings.filter(b=>b.date===ds&&b.status!=='noshow').length;
+    h+=`<div class="day ${ds===d?'on':''}" data-act="pickDay" data-d="${ds}"><span>${i===0?'Today':dd.toLocaleDateString('en-IE',{weekday:'short'})}</span><b>${dd.getDate()}</b><i>${'•'.repeat(Math.min(n,5))}</i></div>`;}
+  h+='</div>';
+  h+=`<div class="grid2"><div class="card"><div class="label">${d===T?'Today':fmtDay(d)}</div><div class="big">${live.length}</div><div class="sub">${live.filter(b=>b.status==='done').length} done · ${live.filter(b=>b.status==='waiting').length} waiting</div></div>
+  <div class="card"><div class="label">Taken</div><div class="big green">${eur(cash+card)}</div><div class="sub">Cash ${eur(cash)} · Card ${eur(card)}</div></div></div>`;
+  if(d===T){
+    const nm=toMin(nowHM()),next=timed.find(b=>b.status==='waiting'&&toMin(b.time)>=nm-20);
+    if(next)h+=`<div class="card next" data-act="openBooking" data-id="${next.id}"><div class="label">Next up</div><div class="row"><div style="min-width:0"><div class="nm">${esc(next.name)}</div><div class="sub">${esc(svcName(next))}${staffTag(next)}</div></div><div class="nt">${next.time}</div></div></div>`;
+    const wq=walk.filter(b=>b.status==='waiting').length;
+    h+=`<div class="sec"><div><h2>Walk-ins</h2><div class="sub">${wq?wq+' waiting':'Nobody waiting'}</div></div><button class="btn sm ghost" data-act="newWalkin">+ Walk-in</button></div>`;
+    let q=0;walk.forEach(b=>h+=rowHtml(b,b.status==='waiting'?'#'+(++q):'✓'));
+  }
+  h+=`<div class="sec"><div><h2>Bookings</h2><div class="sub">${timed.length} booked</div></div><button class="btn sm" data-act="newBooking">+ Booking</button></div>`;
+  if(!timed.length)h+='<div class="card empty">No bookings for this day.</div>';
+  timed.forEach(b=>h+=rowHtml(b,b.time));
+  const fs=freeSlots(d);
+  if(d>=T)h+=`<div class="sec"><div><h2>Free times</h2><div class="sub">Tap one to book</div></div></div><div class="slots">${fs.map(s=>`<button class="slot" data-act="newBooking" data-time="${s}">${s}</button>`).join('')||'<div class="sub">No free times left.</div>'}</div>`;
+  return h;}
+
+function bookingForm(b,preset){
+  const isNew=!b;preset=preset||{};
+  const first=S.services[0];
+  b=b||{name:'',phone:'',serviceId:first.id,staffId:S.staff[0].id,date:UI.date<today()?today():UI.date,time:preset.time||'',walkin:!!preset.walkin,price:first.price};
+  openSheet(`<h3>${isNew?(b.walkin?'New walk-in':'New booking'):'Edit booking'}</h3>
+  <label>Name<input id="f_name" value="${esc(b.name)}" placeholder="Customer name" autocomplete="off"></label>
+  <label>Phone (optional)<input id="f_phone" type="tel" value="${esc(b.phone||'')}" placeholder="08x xxx xxxx"></label>
+  <label>Service<select id="f_svc">${S.services.map(s=>`<option value="${s.id}" ${s.id===b.serviceId?'selected':''}>${esc(s.name)} — ${eur(s.price)}</option>`).join('')}</select></label>
+  ${S.staff.length>1?`<label>Barber<select id="f_staff">${S.staff.map(s=>`<option value="${s.id}" ${s.id===b.staffId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label>`:''}
+  <div class="grid2" style="margin:0"><label>Date<input id="f_date" type="date" value="${b.date}"></label><label>Time<input id="f_time" type="time" step="300" value="${b.time||''}" ${b.walkin?'disabled':''}></label></div>
+  <label class="check"><input id="f_walk" type="checkbox" ${b.walkin?'checked':''}> Walk-in (no set time)</label>
+  <label>Price (€)<input id="f_price" type="number" inputmode="decimal" step="0.5" value="${b.price}"></label>
+  <button class="btn full" data-act="saveBooking" data-id="${isNew?'':b.id}">Save</button>`);
+  $('#f_svc').onchange=e=>{const s=svcById(e.target.value);if(s)$('#f_price').value=s.price;};
+  $('#f_walk').onchange=e=>{$('#f_time').disabled=e.target.checked;};}
+function saveBooking(id){
+  const name=$('#f_name').value.trim();if(!name)return toast('Add a name');
+  const walk=$('#f_walk').checked,time=$('#f_time').value;if(!walk&&!time)return toast('Pick a time or tick walk-in');
+  const data={name,phone:$('#f_phone').value.trim(),serviceId:$('#f_svc').value,staffId:$('#f_staff')?$('#f_staff').value:S.staff[0].id,date:$('#f_date').value||today(),time:walk?null:time,walkin:walk,price:parseFloat($('#f_price').value)||0};
+  if(id)Object.assign(S.bookings.find(b=>b.id===id),data);
+  else S.bookings.push({id:uid(),status:'waiting',created:Date.now(),...data});
+  UI.date=data.date;save();closeSheet();render();toast('Saved');}
+function bookingDetail(id){
+  const b=S.bookings.find(x=>x.id===id);if(!b)return;const st=staffById(b.staffId);
+  const actions=b.status==='waiting'
+    ?`<div class="grid2"><button class="btn green" data-act="pay" data-id="${id}" data-m="cash">Paid · Cash</button><button class="btn green" data-act="pay" data-id="${id}" data-m="card">Paid · Card</button></div><button class="btn ghost full" data-act="noshow" data-id="${id}" style="margin:0 0 12px">Mark no-show</button>`
+    :`<button class="btn ghost full" data-act="undo" data-id="${id}" style="margin:0 0 12px">Undo ${b.status==='done'?'payment':'no-show'}</button>`;
+  openSheet(`<h3>${esc(b.name)}</h3><div class="kv"><span>When</span><b>${b.walkin?'Walk-in':b.time} · ${fmtDay(b.date)}</b><span>Service</span><b>${esc(svcName(b))}</b>${st&&S.staff.length>1?`<span>Barber</span><b>${esc(st.name)}</b>`:''}<span>Price</span><b>${eur(b.price)}</b>${b.status==='done'?`<span>Paid by</span><b>${b.paidBy}</b>`:''}${b.phone?`<span>Phone</span><b><a href="tel:${esc(b.phone)}">${esc(b.phone)}</a></b>`:''}</div>
+  ${actions}<div class="grid2"><button class="btn ghost" data-act="editBooking" data-id="${id}">Edit</button><button class="btn ghost danger" data-act="delBooking" data-id="${id}">Delete</button></div>`);}
+function payBooking(id,m){
+  const b=S.bookings.find(x=>x.id===id);if(!b||b.status==='done')return;
+  b.status='done';b.paidBy=m;
+  S.tx.push({id:uid(),date:today(),time:nowHM(),type:'in',amount:b.price,method:m,note:`${b.name} · ${svcName(b)}`,kind:'service',bookingId:b.id,staffId:b.staffId});save();}
+
+/* ---------- Till ---------- */
+function tillRange(){const m=UI.tillMode,d=UI.tillDate;if(m==='day')return[d,d];if(m==='week'){const s=weekStart(d);return[s,addDays(s,6)];}return monthRange(d);}
+function tillLabel(){const[s,e]=tillRange(),T=today();
+  if(UI.tillMode==='day')return s===T?'Today':s===addDays(T,-1)?'Yesterday':fmtDay(s);
+  if(UI.tillMode==='week')return(s<=T&&T<=e?'This week · ':'')+short(s)+' – '+short(e);
+  return parseYmd(s).toLocaleDateString('en-IE',{month:'long',year:'numeric'});}
+function shiftTill(dir){const m=UI.tillMode;if(m==='day')UI.tillDate=addDays(UI.tillDate,dir);else if(m==='week')UI.tillDate=addDays(UI.tillDate,7*dir);else{const d=parseYmd(UI.tillDate);UI.tillDate=ymd(new Date(d.getFullYear(),d.getMonth()+dir,1));}render();}
+function viewTill(){
+  const[s,e]=tillRange();
+  const tx=S.tx.filter(x=>x.date>=s&&x.date<=e).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+  const inn=tx.filter(x=>x.type==='in'),out=tx.filter(x=>x.type==='out');
+  const ti=sum(inn.map(x=>x.amount)),to=sum(out.map(x=>x.amount));
+  const cash=sum(inn.filter(x=>x.method==='cash').map(x=>x.amount)),cashOut=sum(out.filter(x=>x.method==='cash').map(x=>x.amount));
+  let h=`<div class="seg">${['day','week','month'].map(m=>`<button data-act="tillMode" data-m="${m}" class="${UI.tillMode===m?'on':''}">${cap(m)}</button>`).join('')}</div>
+  <div class="navrow"><button class="btn icon ghost" data-act="tillPrev" aria-label="Previous">‹</button><b>${tillLabel()}</b><button class="btn icon ghost" data-act="tillNext" aria-label="Next" ${e>=today()?'disabled':''}>›</button></div>
+  <div class="card center"><div class="label">Left after costs</div><div class="big xl ${ti-to<0?'red':'green'}">${eur(ti-to)}</div><div class="sub">${eur(ti)} in − ${eur(to)} out</div></div>
+  <div class="grid2"><div class="card"><div class="label">In</div><div class="big green">${eur(ti)}</div><div class="sub">Cash ${eur(cash)} · Card ${eur(ti-cash)}</div></div><div class="card"><div class="label">Out</div><div class="big red">${eur(to)}</div><div class="sub">${out.length?out.length+' payment'+(out.length>1?'s':''):'No costs'}</div></div></div>
+  <div class="card row"><span class="sub">Cash that should be in the drawer</span><b>${eur(cash-cashOut)}</b></div>
+  <div class="grid2"><button class="btn green" data-act="moneyIn">+ Money in</button><button class="btn red" data-act="moneyOut">− Money out</button></div>
+  <div class="sec"><h2>Transactions</h2><div class="sub">${tx.length}</div></div>`;
+  if(!tx.length)h+='<div class="card empty">Nothing recorded for this period.</div>';
+  tx.forEach(x=>h+=`<div class="card rowc tx" data-act="openTx" data-id="${x.id}"><div class="ic ${x.type}">${x.type==='in'?'↓':'↑'}</div><div class="rm"><div class="nm">${esc(x.note||(x.type==='in'?'Money in':'Money out'))}</div><div class="sub">${UI.tillMode==='day'?'':fmtDay(x.date)+' · '}${x.time} · ${x.method}</div></div><div class="pr ${x.type==='in'?'green':'red'}">${x.type==='in'?'+':'−'}${eur(x.amount)}</div></div>`);
+  return h;}
+function segBind(sel){$(sel).onclick=e=>{const b=e.target.closest('button');if(!b)return;[...$(sel).children].forEach(x=>x.classList.toggle('on',x===b));};}
+function moneyForm(type){
+  openSheet(`<h3>${type==='in'?'Money in':'Money out'}</h3>
+  <label>Amount (€)<input id="m_amt" type="number" inputmode="decimal" step="0.5" placeholder="0"></label>
+  <div class="seg" id="m_meth"><button class="on" data-m="cash" type="button">Cash</button><button data-m="card" type="button">Card</button></div>
+  <label>${type==='in'?'What for (optional)':'What for'}<input id="m_note" placeholder="${type==='in'?'e.g. Product sale':'e.g. Supplies, rent, electricity'}"></label>
+  <button class="btn full ${type==='in'?'green':'red'}" data-act="saveMoney" data-t="${type}">Save</button>`);segBind('#m_meth');}
+function addTx(type,amount,method,note,kind,staffId){S.tx.push({id:uid(),date:today(),time:nowHM(),type,amount,method,note,kind,staffId});save();}
+function txDetail(id){const x=S.tx.find(t=>t.id===id);if(!x)return;
+  openSheet(`<h3>${x.type==='in'?'Money in':'Money out'}</h3><div class="kv"><span>Amount</span><b>${eur(x.amount)}</b><span>For</span><b>${esc(x.note||'—')}</b><span>When</span><b>${fmtDay(x.date)} · ${x.time}</b><span>Method</span><b>${x.method}</b></div><button class="btn ghost danger full" data-act="delTx" data-id="${id}">Delete</button>`);}
+
+/* ---------- Staff ---------- */
+function viewStaff(){
+  const ws=UI.staffWeek,we=addDays(ws,6),cur=weekStart(today());
+  let h=`<div class="navrow"><button class="btn icon ghost" data-act="wkPrev" aria-label="Previous week">‹</button><b>${ws===cur?'This week · ':''}${short(ws)} – ${short(we)}</b><button class="btn icon ghost" data-act="wkNext" aria-label="Next week" ${ws>=cur?'disabled':''}>›</button></div>`;
+  S.staff.forEach(st=>{const r=staffCalc(st,ws);
+    if(st.pay==='owner'){h+=`<div class="card"><div class="label">${esc(st.name)} · owner</div><div class="big">${eur(r.rev)}</div><div class="sub">${r.done.length} service${r.done.length===1?'':'s'} this week</div></div>`;return;}
+    const payTxt=st.pay==='commission'?`${st.rate}% commission`:st.pay==='wage'?`${eur(st.wage)} / week`:`${eur(st.wage)} + ${st.rate}%`;
+    h+=`<div class="card"><div class="label">Still to pay · ${esc(st.name)}</div><div class="big xl ${r.left>0?'red':'green'}">${eur(Math.max(r.left,0))}</div>${r.left<0?`<div class="sub">Paid ${eur(-r.left)} ahead</div>`:''}
+    <div class="breakdown"><div><span>Pay deal</span><b>${payTxt}</b></div><div><span>Work done</span><b>${r.done.length} · ${eur(r.rev)}</b></div><div><span>Earned</span><b>${eur(r.earned)}</b></div><div><span>Paid so far</span><b>− ${eur(r.paid)}</b></div><div class="tot"><span>Left</span><b>${eur(r.left)}</b></div></div>
+    <div class="grid2" style="margin:0"><button class="btn" data-act="staffPay" data-id="${st.id}" data-k="wage">Pay</button><button class="btn ghost" data-act="staffPay" data-id="${st.id}" data-k="advance">Advance</button></div>
+    ${r.payments.length?'<div class="mini">'+r.payments.map(p=>`<div><span>${fmtDay(p.date)} · ${p.kind==='advance'?'Advance':'Pay'}</span><b>${eur(p.amount)}</b></div>`).join('')+'</div>':''}</div>`;});
+  if(!S.staff.some(s=>s.pay!=='owner'))h+='<div class="card empty">No staff yet. Add barbers in Settings to track wages, commission and advances.</div>';
+  return h;}
+function staffPayForm(id,k){const st=staffById(id),r=staffCalc(st,UI.staffWeek);
+  openSheet(`<h3>${k==='advance'?'Advance to':'Pay'} ${esc(st.name)}</h3><label>Amount (€)<input id="p_amt" type="number" inputmode="decimal" value="${k==='wage'?Math.max(0,Math.round(r.left*100)/100):''}"></label>
+  <div class="seg" id="p_meth"><button class="on" data-m="cash" type="button">Cash</button><button data-m="card" type="button">Bank / card</button></div>
+  <button class="btn full" data-act="saveStaffPay" data-id="${id}" data-k="${k}">Save</button>`);segBind('#p_meth');}
+function saveStaffPay(id,k){const a=parseFloat($('#p_amt').value);if(!(a>0))return toast('Enter an amount');
+  const st=staffById(id),date=UI.staffWeek===weekStart(today())?today():addDays(UI.staffWeek,6);
+  S.tx.push({id:uid(),date,time:nowHM(),type:'out',amount:a,method:$('#p_meth .on').dataset.m,note:`${st.name} · ${k==='advance'?'Advance':'Pay'}`,kind:k,staffId:id});
+  save();closeSheet();render();toast('Recorded');}
+
+/* ---------- Settings ---------- */
+function viewSettings(){
+  const pays=[['owner','Owner'],['commission','Commission'],['wage','Weekly wage'],['both','Wage + commission']];
+  return`<div class="card"><h2 style="margin-bottom:12px">Shop</h2><label>Shop name<input data-set="shop" value="${esc(S.shop)}"></label></div>
+  <div class="card"><h2 style="margin-bottom:12px">Services & prices (€)</h2>${S.services.map(s=>`<div class="erow"><input data-set="svcName" data-id="${s.id}" value="${esc(s.name)}" aria-label="Service name"><input class="num" type="number" inputmode="decimal" data-set="svcPrice" data-id="${s.id}" value="${s.price}" aria-label="Price"><button class="btn icon ghost danger" data-act="delSvc" data-id="${s.id}" aria-label="Remove">×</button></div>`).join('')}<button class="btn ghost sm" data-act="addSvc">+ Add service</button></div>
+  <div class="card"><h2 style="margin-bottom:12px">Team</h2>${S.staff.map(s=>`<div class="staffedit"><div class="erow"><input data-set="stName" data-id="${s.id}" value="${esc(s.name)}" aria-label="Name"><select data-set="stPay" data-id="${s.id}" aria-label="Pay type">${pays.map(([v,l])=>`<option value="${v}" ${s.pay===v?'selected':''}>${l}</option>`).join('')}</select>${S.staff.length>1?`<button class="btn icon ghost danger" data-act="delStaff" data-id="${s.id}" aria-label="Remove">×</button>`:''}</div>
+  ${s.pay==='commission'||s.pay==='both'?`<label class="inl">Commission %<input type="number" inputmode="decimal" data-set="stRate" data-id="${s.id}" value="${s.rate||0}"></label>`:''}${s.pay==='wage'||s.pay==='both'?`<label class="inl">Weekly wage €<input type="number" inputmode="decimal" data-set="stWage" data-id="${s.id}" value="${s.wage||0}"></label>`:''}</div>`).join('')}<button class="btn ghost sm" data-act="addStaff">+ Add barber</button></div>
+  <div class="card"><h2 style="margin-bottom:12px">Opening hours</h2><div class="grid3"><label>Open<input type="time" data-set="open" value="${S.hours.open}"></label><label>Close<input type="time" data-set="close" value="${S.hours.close}"></label><label>Slots<select data-set="slot">${[15,20,30,45,60].map(m=>`<option value="${m}" ${+S.hours.slot===m?'selected':''}>${m} min</option>`).join('')}</select></label></div></div>
+  <div class="card"><h2 style="margin-bottom:12px">Voice</h2><label class="check" style="margin:0"><input type="checkbox" data-set="voiceReply" ${S.voiceReply?'checked':''}> Read answers out loud</label></div>
+  <div class="card"><h2 style="margin-bottom:6px">Backup</h2><p class="sub" style="margin-top:0">Everything is stored on this phone only. Save a backup file now and then, and before switching phones.</p><div class="grid2" style="margin:0"><button class="btn ghost" data-act="export">Save backup</button><button class="btn ghost" data-act="import">Restore</button></div><input type="file" id="importFile" accept="application/json,.json" hidden></div>
+  <div class="card"><h2 style="margin-bottom:12px">Data</h2><div class="grid2" style="margin:0"><button class="btn ghost" data-act="sample">Load sample data</button><button class="btn ghost danger" data-act="wipe">Erase everything</button></div></div>
+  <div class="card"><h2 style="margin-bottom:6px">Add to home screen</h2><p class="sub" style="margin:0">iPhone: open in Safari → Share → <b>Add to Home Screen</b>. Android: Chrome menu → <b>Add to Home screen</b>.</p></div>
+  <p class="foot">Chairside v1</p>`;}
+function doExport(){const blob=new Blob([JSON.stringify(S)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`chairside-backup-${today()}.json`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);toast('Backup saved');}
+function doImport(input){const f=input.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!Array.isArray(o.services)||!Array.isArray(o.bookings)||!Array.isArray(o.tx))throw 0;
+    if(confirm('Replace the data on this phone with this backup?')){S=Object.assign(baseData(),o);save();render();toast('Backup restored');}}
+    catch(e){toast('That file is not a Chairside backup');}input.value='';};r.readAsText(f);}
+
+/* ---------- Sheet & toast ---------- */
+function openSheet(html){$('#sheetCard').innerHTML='<div class="grab"></div><button class="x" data-act="closeSheet" aria-label="Close">×</button>'+html;$('#sheet').classList.add('open');$('#sheetCard').scrollTop=0;}
+function closeSheet(){$('#sheet').classList.remove('open');stopMic();}
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200);}
+
+/* ---------- Voice ---------- */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,listening=false;
+const MIC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+const EXAMPLES=['Conor skin fade tomorrow at 3','Walk-in Jack haircut','Liam paid cash','25 euro card','Spent 40 on supplies','Give Sam 50 advance','How much today?',"Who's next?",'What do I owe Sam?'];
+function openVoice(){
+  openSheet(`<h3>Say it</h3><button class="micbig" id="micBtn" data-act="mic" aria-label="Tap to talk">${MIC}</button>
+  <div class="center"><b id="micState">${SR?'Tap and talk':'Type a command'}</b><div class="sub" id="micHint">${SR?"Tap again when you're done":"Voice isn't available in this browser"}</div></div>
+  <div class="answer" id="answer" hidden></div>
+  <div class="cmdrow"><input id="cmdText" placeholder="or type here…" autocomplete="off" enterkeyhint="send"><button class="btn" data-act="sendCmd">Send</button></div>
+  <div class="label" style="margin:18px 0 8px">Try saying</div>${EXAMPLES.map(x=>`<div class="ex" data-act="example" data-t="${esc(x)}">“${esc(x)}”</div>`).join('')}`);
+  $('#cmdText').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ACT.sendCmd();}});}
+function setMic(a,b){const s=$('#micState'),h=$('#micHint');if(s)s.textContent=a;if(h)h.textContent=b;}
+function toggleMic(){
+  if(!SR)return toast('Voice not supported here — type instead');
+  if(listening){try{rec.stop();}catch(e){}return;}
+  rec=new SR();rec.lang='en-IE';rec.interimResults=true;rec.continuous=false;let heard='';
+  rec.onstart=()=>{listening=true;$('#micBtn')&&$('#micBtn').classList.add('live');setMic('Listening…',"Tap again when you're done");};
+  rec.onresult=e=>{let s='';for(const r of e.results)s+=r[0].transcript;heard=s;setMic('“'+s+'”','');};
+  rec.onerror=e=>{setMic(e.error==='not-allowed'?'Microphone blocked':"Didn't catch that",e.error==='not-allowed'?'Allow microphone access for this site in your settings':'Try again, or type it below');};
+  rec.onend=()=>{const was=listening;listening=false;$('#micBtn')&&$('#micBtn').classList.remove('live');if(was&&heard.trim())runCommand(heard.trim());};
+  try{rec.start();}catch(e){toast('Could not start the microphone');}}
+function stopMic(){if(listening&&rec){listening=false;try{rec.abort();}catch(e){}}}
+function reply(msg){
+  const a=$('#answer');if(a&&$('#sheet').classList.contains('open')){a.hidden=false;a.textContent=msg;}else toast(msg);
+  if(S.voiceReply&&'speechSynthesis' in window){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg.replace(/−?€([\d,.]+)/g,'$1 euro'));u.lang='en-IE';speechSynthesis.speak(u);}catch(e){}}
+  return msg;}
+
+/* ---------- Command parser (English, rule-based, free) ---------- */
+const NUMW={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+function wordsToNums(s){
+  return s.replace(/\b(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)[\s-](one|two|three|four|five|six|seven|eight|nine)\b/g,(m,a,b)=>NUMW[a]+NUMW[b])
+    .replace(/\b(a|one) hundred\b/g,'100')
+    .replace(/\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/g,m=>NUMW[m]);}
+const STOP=new Set(("book booking booked add put in walk walkin walkins ins for at a an the with on today tomorrow tonight am pm oclock o'clock half past quarter to and please appointment customer new him her his he she just is has was it its tap tapped done finished gave give pays pay paid cash card euro euros quid "+
+  "haircut cut trim fade skin beard kids kid child shave hot towel hair wash me my i got get did do by of up from mins minutes monday tuesday wednesday thursday friday saturday sunday next week this that there here can you some want wants yeah ok okay now").split(' '));
+const DAYS=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+const ALIAS=[[/\b(kids?|child|children|boys?)\b/,'kid'],[/\b(hair|cut|haircut) ?(and|&|\+|n) ?beard\b|\bfull works\b/,'hair + beard'],[/\bfade\b/,'fade'],[/\bshave\b/,'shave'],[/\bbeard\b/,'beard'],[/\b(haircut|hair cut|cut|trim)\b/,'haircut']];
+function findService(t){
+  let best=null;
+  for(const s of S.services){const n=s.name.toLowerCase();if(t.includes(n)&&(!best||n.length>best.name.length))best=s;}
+  if(best)return best;
+  for(const[re,key]of ALIAS)if(re.test(t)){const s=S.services.find(x=>x.name.toLowerCase().includes(key));if(s)return s;}
+  return null;}
+const wordIn=(t,w)=>new RegExp('(^|\\s)'+escRe(w)+'(\\s|$)').test(t);
+function findStaff(t){return S.staff.find(s=>s.name.toLowerCase()!=='me'&&wordIn(t,s.name.toLowerCase().split(' ')[0]));}
+function findName(t,ex,staff){
+  const sw=staff?staff.name.toLowerCase().split(/\s+/):[];
+  const w=t.replace(/[^a-z'áéíóú\s-]/g,' ').split(/\s+/).filter(x=>x&&x.length>1&&!STOP.has(x)&&!ex.has(x)&&!sw.includes(x));
+  return w.slice(0,2).map(x=>x.split(/(['-])/).map(cap).join('')).join(' ');}
+function fixH(h,mi,ap){
+  ap=(ap||'').replace(/[\s.]/g,'');
+  if(ap==='pm'&&h<12)h+=12;else if(ap==='am'&&h===12)h=0;
+  else if(ap!=='am'&&ap!=='pm'){const oh=Math.floor(toMin(S.hours.open)/60);if(h<oh&&h<12)h+=12;}
+  if(h>23||mi>59)return null;return fromMin(h*60+mi);}
+function findTime(t,bare){
+  const tries=[[/\bhalf (?:past )?(\d{1,2})\b/,m=>fixH(+m[1],30)],[/\bquarter past (\d{1,2})\b/,m=>fixH(+m[1],15)],[/\bquarter to (\d{1,2})\b/,m=>fixH(+m[1]-1,45)],
+    [/\b(\d{1,2})[:.](\d{2})\s*(am|pm)?\b/,m=>fixH(+m[1],+m[2],m[3])],[/\b(\d{1,2})\s*(am|pm|o'?clock)\b/,m=>fixH(+m[1],0,m[2])],[/\bat (\d{1,2})\b/,m=>fixH(+m[1],0)]];
+  if(bare)tries.push([/\b(\d{1,2})\b/,m=>fixH(+m[1],0)]);
+  for(const[re,fn]of tries){const m=t.match(re);if(m){const time=fn(m);if(time)return{time,raw:m[0]};}}
+  return null;}
+function findDate(t){const T=today();
+  if(/\btomorrow\b/.test(t))return{d:addDays(T,1),label:'tomorrow'};
+  for(let i=0;i<7;i++)if(new RegExp('\\b'+DAYS[i]+'\\b').test(t)){let diff=(i-parseYmd(T).getDay()+7)%7||7;return{d:addDays(T,diff),label:'on '+cap(DAYS[i])};}
+  return{d:T,label:'today'};}
+function leastBusy(d,time){let best=S.staff[0],bc=1e9;for(const s of S.staff){const c=S.bookings.filter(b=>b.date===d&&b.staffId===s.id&&b.status==='waiting'&&(!time||b.time===time)).length;if(c<bc){bc=c;best=s;}}return best;}
+const firstNum=t=>{const m=t.match(/\b(\d+(?:\.\d{1,2})?)\b/);return m?parseFloat(m[1]):null;};
+
+function runCommand(raw){
+  let t=' '+raw.toLowerCase().replace(/[’‘]/g,"'").replace(/€\s*/g,' euro ').replace(/(\d),(\d{3})/g,'$1$2').replace(/\bp\.?\s?m\.?/g,'pm').replace(/\ba\.\s?m\.?/g,'am').replace(/[!?;,"“”]/g,' ')+' ';
+  t=wordsToNums(t).replace(/(\D)\.(\s|$)/g,'$1 ').replace(/\s+/g,' ');
+  const T=today(),has=re=>re.test(t);
+  let amount=null,m;
+  if((m=t.match(/\beuros? (\d+(?:\.\d{1,2})?)\b/))||(m=t.match(/\b(\d+(?:\.\d{1,2})?) ?(?:euros?|quid|bucks)\b/))){amount=parseFloat(m[1]);t=t.replace(m[0],' ');}
+  const staff=findStaff(t);
+
+  // questions
+  if(has(/\b(owe|owed|owing)\b/)){const list=staff?[staff]:S.staff.filter(s=>s.pay!=='owner');if(!list.length)return reply('You have no staff set up yet.');
+    return reply(list.map(s=>`${s.name}: ${eur(Math.max(staffCalc(s,weekStart(T)).left,0))} still to pay this week`).join('. ')+'.');}
+  if(has(/\b(how much|takings|taken|made|earned|so far)\b/)&&amount===null&&!has(/\d/)){
+    const wk=has(/\bweek\b/),mo=has(/\bmonth\b/),r=wk?[weekStart(T),addDays(weekStart(T),6)]:mo?monthRange(T):[T,T];
+    const tx=S.tx.filter(x=>x.date>=r[0]&&x.date<=r[1]),i=sum(tx.filter(x=>x.type==='in').map(x=>x.amount)),o=sum(tx.filter(x=>x.type==='out').map(x=>x.amount));
+    return reply(`You've taken ${eur(i)} ${wk?'this week':mo?'this month':'today'}${o?`, with ${eur(o)} out, leaving ${eur(i-o)}`:''}.`);}
+  if(has(/\b(who'?s next|who is next|next customer|next up|next booking)\b/)){
+    const nm=toMin(nowHM()),wq=S.bookings.filter(b=>b.date===T&&b.walkin&&b.status==='waiting').sort((a,b)=>a.created-b.created);
+    const nx=S.bookings.filter(b=>b.date===T&&!b.walkin&&b.status==='waiting'&&toMin(b.time)>=nm-20).sort((a,b)=>a.time.localeCompare(b.time))[0];
+    let msg=nx?`Next is ${nx.name} at ${nx.time} for a ${svcName(nx).toLowerCase()}.`:'No more bookings today.';
+    if(wq.length)msg+=` ${wq.length} walk-in${wq.length>1?'s':''} waiting, first is ${wq[0].name}.`;return reply(msg);}
+
+  // staff advance / pay
+  if(staff&&(has(/\badvance\b/)||(has(/\b(pay|paid|give|gave)\b/)&&!findService(t)))){
+    const num=amount??firstNum(t);if(!num)return reply(`How much? Try "give ${staff.name} 50 advance".`);
+    const kind=has(/\badvance\b/)?'advance':'wage';
+    addTx('out',num,has(/\b(card|bank|transfer|revolut)\b/)?'card':'cash',`${staff.name} · ${kind==='advance'?'Advance':'Pay'}`,kind,staff.id);render();
+    return reply(`${kind==='advance'?'Advance':'Payment'} of ${eur(num)} to ${staff.name} recorded.`);}
+  if(has(/\badvance\b/))return reply('Which barber? Say their name, like "give Sam 50 advance".');
+
+  // sale (money in)
+  if(has(/\b(sold|sale)\b/)){const num=amount??firstNum(t);if(!num)return reply('How much was the sale?');
+    const note=t.replace(/\d+(\.\d+)?/g,' ').split(/\s+/).filter(x=>x&&!['sold','sale','a','an','the','of','for','cash','card','euro','euros','i'].includes(x)).join(' ');
+    const meth=has(/\b(card|tap)\b/)?'card':'cash';addTx('in',num,meth,note?cap(note):'Sale','other');render();return reply(`${eur(num)} ${meth} sale recorded.`);}
+
+  // expense (money out)
+  if(has(/\b(spent|spend|expense|bill|bought|buy|rent|electricity|electric|supplies|stock)\b/)){
+    const num=amount??firstNum(t);if(!num)return reply('How much was it?');
+    const note=t.replace(/\d+(\.\d+)?/g,' ').split(/\s+/).filter(x=>x&&!['spent','spend','on','for','expense','bill','bought','buy','paid','pay','the','a','an','euro','euros','cash','card','i','of','some','new','just','we'].includes(x)).join(' ')||'Expense';
+    addTx('out',num,has(/\bcard\b/)?'card':'cash',cap(note),'expense');render();return reply(`Recorded ${eur(num)} out for ${note}.`);}
+
+  const svc=findService(t);
+  const svcWords=new Set(svc?svc.name.toLowerCase().split(/[^a-z']+/).filter(Boolean):[]);
+
+  // walk-in
+  if(has(/\bwalk ?-?ins?\b/)){
+    const tw=t.replace(/\bwalk ?-?ins?\b/g,' ');const name=findName(tw,svcWords,staff)||'Walk-in';const s=svc||S.services[0];
+    S.bookings.push({id:uid(),date:T,time:null,walkin:true,name,serviceId:s.id,staffId:(staff||leastBusy(T)).id,price:s.price,status:'waiting',created:Date.now()});
+    save();UI.date=T;render();const q=S.bookings.filter(b=>b.date===T&&b.walkin&&b.status==='waiting').length;
+    return reply(`${name} added to the walk-in queue for a ${s.name.toLowerCase()}. ${q} waiting.`);}
+
+  let tm=findTime(t);
+  // payment
+  if(!tm&&has(/\b(paid|pays|gave|cash|card|tapped|done|finished)\b/)){
+    const nameW=findName(t,svcWords,staff),meth=has(/\b(card|tap|tapped|revolut)\b/)?'card':'cash';
+    const parts=nameW.toLowerCase().split(' ').filter(Boolean);
+    const b=parts.length?S.bookings.filter(b=>b.date===T&&b.status==='waiting').sort((a,c)=>(a.walkin-c.walkin)||String(a.time).localeCompare(String(c.time))).find(b=>b.name.toLowerCase().split(/\s+/).some(w=>parts.includes(w))):null;
+    if(b){if(amount)b.price=amount;payBooking(b.id,meth);render();return reply(`${b.name} paid ${eur(b.price)} by ${meth}.`);}
+    const num=amount??firstNum(t);
+    if(num){addTx('in',num,meth,nameW||(svc?svc.name:'Payment'),'other');render();return reply(`${eur(num)} by ${meth} recorded.`);}
+    if(nameW)return reply(`I couldn't find a booking for ${nameW} today.`);}
+  if(amount!==null&&!tm){const meth=has(/\bcard\b/)?'card':'cash';addTx('in',amount,meth,svc?svc.name:'Money in','other');render();return reply(`${eur(amount)} by ${meth} recorded.`);}
+
+  // booking
+  if(tm||has(/\b(book|booking|appointment)\b/)||(svc&&has(/\d/))){
+    if(!tm)tm=findTime(t,true);
+    if(!tm)return reply('What time? Try "Conor fade tomorrow at 3".');
+    const tt=t.replace(tm.raw,' '),date=findDate(tt),name=findName(tt,svcWords,staff);
+    if(!name)return reply('Who is it for? Say a name, like "Conor fade at 3".');
+    const s=svc||S.services[0],st=staff||leastBusy(date.d,tm.time);
+    const clash=S.bookings.filter(b=>b.date===date.d&&b.time===tm.time&&b.status!=='noshow').length;
+    S.bookings.push({id:uid(),date:date.d,time:tm.time,walkin:false,name,serviceId:s.id,staffId:st.id,price:s.price,status:'waiting',created:Date.now()});
+    save();UI.date=date.d;if(UI.tab!=='today')UI.tab='today';render();
+    return reply(`Booked ${name} for a ${s.name.toLowerCase()} ${date.label} at ${tm.time}${S.staff.length>1?' with '+st.name:''}.${clash>=S.staff.length?' Heads up: that time was already full.':''}`);}
+
+  return reply(`Sorry, I didn't get that. Try "Conor fade at 3" or "25 euro cash".`);}
+
+/* ---------- events ---------- */
+const ACT={
+  tab:el=>{UI.tab=el.dataset.tab;if(UI.tab==='today'&&UI.date<today())UI.date=today();render();window.scrollTo(0,0);},
+  pickDay:el=>{UI.date=el.dataset.d;render();},
+  newBooking:el=>bookingForm(null,{time:el.dataset.time||''}),
+  newWalkin:()=>bookingForm(null,{walkin:true}),
+  saveBooking:(el,id)=>saveBooking(id),
+  openBooking:(el,id)=>bookingDetail(id),
+  pay:(el,id)=>{payBooking(id,el.dataset.m);closeSheet();render();toast('Paid ✓');},
+  noshow:(el,id)=>{const b=S.bookings.find(x=>x.id===id);if(b){b.status='noshow';save();}closeSheet();render();},
+  undo:(el,id)=>{const b=S.bookings.find(x=>x.id===id);if(!b)return;S.tx=S.tx.filter(x=>x.bookingId!==id);b.status='waiting';b.paidBy=null;save();closeSheet();render();},
+  editBooking:(el,id)=>bookingForm(S.bookings.find(x=>x.id===id)),
+  delBooking:(el,id)=>{if(!confirm('Delete this booking?'))return;S.bookings=S.bookings.filter(x=>x.id!==id);S.tx=S.tx.filter(x=>x.bookingId!==id);save();closeSheet();render();},
+  tillMode:el=>{UI.tillMode=el.dataset.m;UI.tillDate=today();render();},
+  tillPrev:()=>shiftTill(-1),tillNext:()=>shiftTill(1),
+  moneyIn:()=>moneyForm('in'),moneyOut:()=>moneyForm('out'),
+  saveMoney:el=>{const type=el.dataset.t,a=parseFloat($('#m_amt').value);if(!(a>0))return toast('Enter an amount');
+    addTx(type,a,$('#m_meth .on').dataset.m,$('#m_note').value.trim()||(type==='in'?'Money in':'Expense'),type==='in'?'other':'expense');closeSheet();render();toast('Saved');},
+  openTx:(el,id)=>txDetail(id),
+  delTx:(el,id)=>{if(!confirm('Delete this transaction?'))return;const x=S.tx.find(t=>t.id===id);if(x&&x.bookingId){const b=S.bookings.find(b=>b.id===x.bookingId);if(b){b.status='waiting';b.paidBy=null;}}S.tx=S.tx.filter(t=>t.id!==id);save();closeSheet();render();},
+  wkPrev:()=>{UI.staffWeek=addDays(UI.staffWeek,-7);render();},wkNext:()=>{UI.staffWeek=addDays(UI.staffWeek,7);render();},
+  staffPay:(el,id)=>staffPayForm(id,el.dataset.k),saveStaffPay:(el,id)=>saveStaffPay(id,el.dataset.k),
+  addSvc:()=>{S.services.push({id:uid(),name:'New service',price:0});save();render();},
+  delSvc:(el,id)=>{if(S.services.length<2)return toast('Keep at least one service');S.services=S.services.filter(s=>s.id!==id);save();render();},
+  addStaff:()=>{S.staff.push({id:uid(),name:'New barber',pay:'commission',rate:40,wage:0});save();render();},
+  delStaff:(el,id)=>{if(!confirm('Remove this barber? Past records stay.'))return;S.staff=S.staff.filter(s=>s.id!==id);save();render();},
+  export:doExport,import:()=>$('#importFile').click(),
+  sample:()=>{if(!confirm('Replace everything with sample data?'))return;S=sampleData();save();UI.date=today();render();},
+  wipe:()=>{if(!confirm('Erase all bookings, money and settings on this phone?'))return;S=baseData();save();UI.date=today();render();toast('Fresh start');},
+  startOwn:()=>{if(!confirm('Clear the sample data and start with your own?'))return;S=baseData();save();UI.date=today();UI.tab='settings';render();toast('Set your shop name, prices and team');},
+  voice:openVoice,mic:toggleMic,
+  sendCmd:()=>{const i=$('#cmdText'),v=i&&i.value.trim();if(v){runCommand(v);i.value='';}},
+  example:el=>runCommand(el.dataset.t),
+  closeSheet:closeSheet};
+document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el||el.disabled)return;const fn=ACT[el.dataset.act];if(fn)fn(el,el.dataset.id);});
+document.addEventListener('change',e=>{
+  const el=e.target;if(el.id==='importFile')return doImport(el);
+  const k=el.dataset.set;if(!k)return;const id=el.dataset.id,v=el.type==='checkbox'?el.checked:el.value;
+  const sv=id&&S.services.find(s=>s.id===id),st=id&&S.staff.find(s=>s.id===id);
+  switch(k){case'shop':S.shop=v.trim()||'My Barbershop';break;case'svcName':sv.name=v.trim()||sv.name;break;case'svcPrice':sv.price=parseFloat(v)||0;break;
+    case'stName':st.name=v.trim()||st.name;break;case'stPay':st.pay=v;break;case'stRate':st.rate=parseFloat(v)||0;break;case'stWage':st.wage=parseFloat(v)||0;break;
+    case'open':if(v)S.hours.open=v;break;case'close':if(v)S.hours.close=v;break;case'slot':S.hours.slot=+v;break;case'voiceReply':S.voiceReply=v;break;}
+  save();if(k==='stPay'||k==='shop')render();toast('Saved');});
+
+/* ---------- start ---------- */
+load();render();
+setInterval(()=>{if(UI.tab==='today'&&!$('#sheet').classList.contains('open'))render();},60000);
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
