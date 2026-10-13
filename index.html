@@ -205,7 +205,7 @@ function save(){if(hasSync())Sync.stamp();try{localStorage.setItem(KEY,JSON.stri
 
 const svcById=id=>S.services.find(s=>s.id===id);
 const staffById=id=>S.staff.find(s=>s.id===id);
-const svcName=b=>{const s=svcById(b.serviceId);return s?s.name:'Service';};
+const svcName=b=>{const s=svcById(b.serviceId);return s?s.name:(b.svc||'Service');};
 const staffTag=b=>{if(S.staff.length<2)return'';const s=staffById(b.staffId);return s?' · '+esc(s.name):'';};
 const durOf=b=>+b.dur||+(svcById(b.serviceId)||{}).dur||+S.hours.slot||30;
 const durTxt=m=>m<60?m+' min':Math.floor(m/60)+'h'+(m%60?' '+(m%60)+'m':'');
@@ -329,7 +329,10 @@ function saveBooking(id){
   if(!walk){const cl=clashes(data.date,data.staffId,toMin(time),data.dur,id);
     if(cl.length&&!confirm(`This overlaps ${cl[0].name} at ${cl[0].time}. Book anyway?`))return;
     if(!cl.length&&!inHours(toMin(time),data.dur)&&!confirm('This runs outside opening hours. Book anyway?'))return;}
-  if(id)Object.assign(S.bookings.find(b=>b.id===id),data);
+  if(id){const b=S.bookings.find(b=>b.id===id);Object.assign(b,data);
+    // Already paid? Keep the till entry in step with the booking.
+    const t=b.status==='done'&&S.tx.find(x=>x.bookingId===id);
+    if(t){t.amount=b.price;t.note=`${b.name} · ${svcName(b)}`;t.staffId=b.staffId;}}
   else S.bookings.push({id:uid(),status:'waiting',created:Date.now(),...data});
   UI.date=data.date;save();closeSheet();render();toast('Saved');}
 function bookingDetail(id){
@@ -355,7 +358,8 @@ function tillLabel(){const[s,e]=tillRange(),T=today();
 function shiftTill(dir){const m=UI.tillMode;if(m==='day')UI.tillDate=addDays(UI.tillDate,dir);else if(m==='week')UI.tillDate=addDays(UI.tillDate,7*dir);else{const d=parseYmd(UI.tillDate);UI.tillDate=ymd(new Date(d.getFullYear(),d.getMonth()+dir,1));}render();}
 function viewTill(){
   const[s,e]=tillRange();
-  const tx=S.tx.filter(x=>x.date>=s&&x.date<=e).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+  const all=S.tx.filter(x=>x.date>=s&&x.date<=e),float=UI.tillMode==='day'?all.find(x=>x.type==='float'):null;
+  const tx=all.filter(x=>x.type!=='float').sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
   const inn=tx.filter(x=>x.type==='in'),out=tx.filter(x=>x.type==='out');
   const ti=sum(inn.map(x=>x.amount)),to=sum(out.map(x=>x.amount));
   const cash=sum(inn.filter(x=>x.method==='cash').map(x=>x.amount)),cashOut=sum(out.filter(x=>x.method==='cash').map(x=>x.amount));
@@ -363,7 +367,8 @@ function viewTill(){
   <div class="navrow"><button class="btn icon ghost" data-act="tillPrev" aria-label="Previous">‹</button><b>${tillLabel()}</b><button class="btn icon ghost" data-act="tillNext" aria-label="Next" ${e>=today()?'disabled':''}>›</button></div>
   <div class="card center"><div class="label">Left after costs</div><div class="big xl ${ti-to<0?'red':'green'}">${eur(ti-to)}</div><div class="sub">${eur(ti)} in − ${eur(to)} out</div></div>
   <div class="grid2"><div class="card"><div class="label">In</div><div class="big green">${eur(ti)}</div><div class="sub">Cash ${eur(cash)} · Card ${eur(ti-cash)}</div></div><div class="card"><div class="label">Out</div><div class="big red">${eur(to)}</div><div class="sub">${out.length?out.length+' payment'+(out.length>1?'s':''):'No costs'}</div></div></div>
-  <div class="card row"><span class="sub">Cash that should be in the drawer</span><b>${eur(cash-cashOut)}</b></div>
+  ${UI.tillMode==='day'?`<div class="card"><div class="row"><span class="sub">Cash that should be in the drawer</span><b>${eur((float?float.amount:0)+cash-cashOut)}</b></div>
+  <div class="row" style="margin-top:6px"><span class="sub">${float?`Started the day with ${eur(float.amount)}`:'Add the cash the drawer started with'}</span><button class="linkbtn" data-act="setFloat">${float?'Change':'Set start cash'}</button></div></div>`:''}
   <div class="grid2"><button class="btn green" data-act="moneyIn">+ Money in</button><button class="btn red" data-act="moneyOut">− Money out</button></div>
   <div class="sec"><h2>Transactions</h2><div class="sub">${tx.length}</div></div>`;
   if(!tx.length)h+='<div class="card empty">Nothing recorded for this period.</div>';
@@ -376,6 +381,11 @@ function moneyForm(type){
   <div class="seg" id="m_meth"><button class="on" data-m="cash" type="button">Cash</button><button data-m="card" type="button">Card</button></div>
   <label>${type==='in'?'What for (optional)':'What for'}<input id="m_note" placeholder="${type==='in'?'e.g. Product sale':'e.g. Supplies, rent, electricity'}"></label>
   <button class="btn full ${type==='in'?'green':'red'}" data-act="saveMoney" data-t="${type}">Save</button>`);segBind('#m_meth');}
+function floatForm(){
+  const f=S.tx.find(x=>x.type==='float'&&x.date===UI.tillDate);
+  openSheet(`<h3>Start cash</h3><p class="sub" style="margin-top:0">How much cash was in the drawer when the shop opened on ${fmtDay(UI.tillDate)}? It's not counted as takings.</p>
+  <label>Amount (€)<input id="fl_amt" type="number" inputmode="decimal" min="0" step="0.5" value="${f?f.amount:''}"></label>
+  <button class="btn full" data-act="saveFloat">Save</button>`);}
 function addTx(type,amount,method,note,kind,staffId){S.tx.push({id:uid(),date:today(),time:nowHM(),type,amount,method,note,kind,staffId});save();}
 function txDetail(id){const x=S.tx.find(t=>t.id===id);if(!x)return;
   openSheet(`<h3>${x.type==='in'?'Money in':'Money out'}</h3><div class="kv"><span>Amount</span><b>${eur(x.amount)}</b><span>For</span><b>${esc(x.note||'—')}</b><span>When</span><b>${fmtDay(x.date)} · ${x.time}</b><span>Method</span><b>${x.method}</b></div><button class="btn ghost danger full" data-act="delTx" data-id="${id}">Delete</button>`);}
@@ -415,7 +425,7 @@ function viewSettings(){
   ${hasSync()?Sync.card():''}${hasSync()?'':`<div class="card"><h2 style="margin-bottom:6px">Backup</h2><p class="sub" style="margin-top:0">${hasSync()&&Sync.signedIn()?'Your data is also backed up in the cloud. A backup file is an extra copy you keep yourself.':'Everything is stored on this phone only. Save a backup file now and then, and before switching phones.'}</p><div class="grid2" style="margin:0"><button class="btn ghost" data-act="export">Save backup</button><button class="btn ghost" data-act="import">Restore</button></div></div>`}
   <div class="card"><h2 style="margin-bottom:12px">Data</h2><button class="btn ghost danger full" data-act="wipe" style="margin:0">Erase everything</button></div><input type="file" id="importFile" accept="application/json,.json" hidden>
   <div class="card"><h2 style="margin-bottom:6px">Add to home screen</h2><p class="sub" style="margin:0">iPhone: open in Safari → Share → <b>Add to Home Screen</b>. Android: Chrome menu → <b>Add to Home screen</b>.</p></div>
-  <p class="foot">Chairside v1.8 · <a href="privacy.html" style="color:inherit">Privacy</a></p>`;}
+  <p class="foot">Chairside v1.9 · <a href="privacy.html" style="color:inherit">Privacy</a></p>`;}
 function doExport(){const blob=new Blob([JSON.stringify(S)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`chairside-backup-${today()}.json`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},800);toast('Backup saved');}
 function doImport(input){const f=input.files[0];if(!f)return;const r=new FileReader();
   r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!Array.isArray(o.services)||!Array.isArray(o.bookings)||!Array.isArray(o.tx))throw 0;
@@ -496,7 +506,11 @@ function findService(t){
   for(const[re,key]of ALIAS)if(re.test(t)){const s=S.services.find(x=>x.name.toLowerCase().includes(key));if(s)return s;}
   return null;}
 const wordIn=(t,w)=>new RegExp('(^|\\s)'+escRe(w)+'(\\s|$)').test(t);
-function findStaff(t){return S.staff.find(s=>s.name.toLowerCase()!=='me'&&wordIn(t,s.name.toLowerCase().split(' ')[0]));}
+// Barber names. A name only counts as the barber when the sentence says so ("with Sam", "pay Sam",
+// "Sam 50 advance"); otherwise it's a customer, so "Sam paid 20" is a customer paying, not a wage.
+const staffWords=s=>s.name.toLowerCase().split(/\s+/).filter(w=>w.length>1&&w!=='me');
+function findStaff(t){return S.staff.find(s=>staffWords(s).some(w=>wordIn(t,w)));}
+function staffAfter(t,re){const m=t.match(re);return m?S.staff.find(s=>staffWords(s).includes(m[1]))||null:null;}
 function findName(t,ex,staff){
   const sw=staff?staff.name.toLowerCase().split(/\s+/):[];
   const w=t.replace(/[^a-z'áéíóú\s-]/g,' ').split(/\s+/).filter(x=>x&&x.length>1&&!STOP.has(x)&&!ex.has(x)&&!sw.includes(x));
@@ -529,10 +543,14 @@ function runCommand(raw){
   const T=today(),has=re=>re.test(t);
   let amount=null,m;
   if((m=t.match(/\beuros? (\d+(?:\.\d{1,2})?)\b/))||(m=t.match(/\b(\d+(?:\.\d{1,2})?) ?(?:euros?|quid|bucks)\b/))){amount=parseFloat(m[1]);t=t.replace(m[0],' ');}
-  const staff=findStaff(t);
+  const anyStaff=findStaff(t);
+  const payStaff=staffAfter(t,/\b(?:pay|paid|give|gave|advance(?: to| for)?)\s+([a-z'áéíóú-]+)/);
+  const withStaff=staffAfter(t,/\bwith\s+([a-z'áéíóú-]+)/);
+  if(withStaff)t=t.replace(/\bwith\s+[a-z'áéíóú-]+/,' ');
+  const staff=null; // customer-name parsing below never drops a word just because a barber shares it
 
   // questions
-  if(has(/\b(owe|owed|owing)\b/)){const list=staff?[staff]:S.staff.filter(s=>s.pay!=='owner');if(!list.length)return reply('You have no staff set up yet.');
+  if(has(/\b(owe|owed|owing)\b/)){const list=anyStaff?[anyStaff]:S.staff.filter(s=>s.pay!=='owner');if(!list.length)return reply('You have no staff set up yet.');
     return reply(list.map(s=>`${s.name}: ${eur(Math.max(staffCalc(s,weekStart(T)).left,0))} still to pay this week`).join('. ')+'.');}
   if(has(/\b(how much|takings|taken|made|earned|so far)\b/)&&amount===null&&!has(/\d/)){
     const wk=has(/\bweek\b/),mo=has(/\bmonth\b/),r=wk?[weekStart(T),addDays(weekStart(T),6)]:mo?monthRange(T):[T,T];
@@ -545,11 +563,12 @@ function runCommand(raw){
     if(wq.length)msg+=` ${wq.length} walk-in${wq.length>1?'s':''} waiting, first is ${wq[0].name}.`;return reply(msg);}
 
   // staff advance / pay
-  if(staff&&(has(/\badvance\b/)||(has(/\b(pay|paid|give|gave)\b/)&&!findService(t)))){
-    const num=amount??firstNum(t);if(!num)return reply(`How much? Try "give ${staff.name} 50 advance".`);
+  const payee=has(/\badvance\b/)?(payStaff||anyStaff):(!findService(t)?payStaff:null);
+  if(payee){
+    const num=amount??firstNum(t);if(!num)return reply(`How much? Try "give ${payee.name} 50 advance".`);
     const kind=has(/\badvance\b/)?'advance':'wage';
-    addTx('out',num,has(/\b(card|bank|transfer|revolut)\b/)?'card':'cash',`${staff.name} · ${kind==='advance'?'Advance':'Pay'}`,kind,staff.id);render();
-    return reply(`${kind==='advance'?'Advance':'Payment'} of ${eur(num)} to ${staff.name} recorded.`);}
+    addTx('out',num,has(/\b(card|bank|transfer|revolut)\b/)?'card':'cash',`${payee.name} · ${kind==='advance'?'Advance':'Pay'}`,kind,payee.id);render();
+    return reply(`${kind==='advance'?'Advance':'Payment'} of ${eur(num)} to ${payee.name} recorded.`);}
   if(has(/\badvance\b/))return reply('Which barber? Say their name, like "give Sam 50 advance".');
 
   // sale (money in)
@@ -569,7 +588,7 @@ function runCommand(raw){
   // walk-in
   if(has(/\bwalk ?-?ins?\b/)){
     const tw=t.replace(/\bwalk ?-?ins?\b/g,' ');const name=findName(tw,svcWords,staff)||'Walk-in';const s=svc||S.services[0];
-    S.bookings.push({id:uid(),date:T,time:null,walkin:true,name,serviceId:s.id,staffId:(staff||leastBusy(T)).id,price:s.price,status:'waiting',created:Date.now()});
+    S.bookings.push({id:uid(),date:T,time:null,walkin:true,name,serviceId:s.id,staffId:(withStaff||leastBusy(T)).id,price:s.price,status:'waiting',created:Date.now()});
     save();UI.date=T;render();const q=S.bookings.filter(b=>b.date===T&&b.walkin&&b.status==='waiting').length;
     return reply(`${name} added to the walk-in queue for a ${s.name.toLowerCase()}. ${q} waiting.`);}
 
@@ -591,7 +610,7 @@ function runCommand(raw){
     if(!tm)return reply('What time? Try "Conor fade tomorrow at 3".');
     const tt=t.replace(tm.raw,' '),date=findDate(tt),name=findName(tt,svcWords,staff);
     if(!name)return reply('Who is it for? Say a name, like "Conor fade at 3".');
-    const s=svc||S.services[0],start=toMin(tm.time),st=staff||leastBusy(date.d,tm.time,s.dur);
+    const s=svc||S.services[0],start=toMin(tm.time),st=withStaff||leastBusy(date.d,tm.time,s.dur);
     const cl=clashes(date.d,st.id,start,s.dur);
     S.bookings.push({id:uid(),date:date.d,time:tm.time,walkin:false,name,serviceId:s.id,staffId:st.id,price:s.price,dur:s.dur,status:'waiting',created:Date.now()});
     save();UI.date=date.d;if(UI.tab!=='today')UI.tab='today';render();
@@ -625,13 +644,25 @@ const ACT={
   saveMoney:el=>{const type=el.dataset.t,a=parseFloat($('#m_amt').value);if(!(a>0))return toast('Enter an amount');
     addTx(type,a,$('#m_meth .on').dataset.m,$('#m_note').value.trim()||(type==='in'?'Money in':'Expense'),type==='in'?'other':'expense');closeSheet();render();toast('Saved');},
   openTx:(el,id)=>txDetail(id),
+  setFloat:floatForm,
+  saveFloat:()=>{const a=parseFloat($('#fl_amt').value);if(!(a>=0))return toast('Enter an amount');
+    S.tx=S.tx.filter(x=>!(x.type==='float'&&x.date===UI.tillDate));
+    if(a>0)S.tx.push({id:uid(),date:UI.tillDate,time:'00:00',type:'float',amount:a,method:'cash',note:'Start cash',kind:'float'});
+    save();closeSheet();render();toast('Saved');},
   delTx:(el,id)=>{if(!confirm('Delete this transaction?'))return;const x=S.tx.find(t=>t.id===id);if(x&&x.bookingId){const b=S.bookings.find(b=>b.id===x.bookingId);if(b){b.status='waiting';b.paidBy=null;}}S.tx=S.tx.filter(t=>t.id!==id);save();closeSheet();render();},
   wkPrev:()=>{UI.staffWeek=addDays(UI.staffWeek,-7);render();},wkNext:()=>{UI.staffWeek=addDays(UI.staffWeek,7);render();},
   staffPay:(el,id)=>staffPayForm(id,el.dataset.k),saveStaffPay:(el,id)=>saveStaffPay(id,el.dataset.k),
   addSvc:()=>{S.services.push({id:uid(),name:'New service',price:0,dur:30});save();render();const n=document.querySelectorAll('[data-set=svcName]');const last=n[n.length-1];if(last){last.focus();last.select();}},
-  delSvc:(el,id)=>{if(S.services.length<2)return toast('Keep at least one service');S.services=S.services.filter(s=>s.id!==id);save();render();},
+  delSvc:(el,id)=>{if(S.services.length<2)return toast('Keep at least one service');const sv=svcById(id);
+    const used=S.bookings.filter(b=>b.serviceId===id);
+    if(!confirm(`Remove “${sv.name}”?`+(used.length?` ${used.length} booking${used.length>1?'s':''} keep${used.length>1?'':'s'} its name and price.`:'')))return;
+    used.forEach(b=>{b.svc=sv.name;b.dur=durOf(b);});S.services=S.services.filter(s=>s.id!==id);save();render();},
   addStaff:()=>{S.staff.push({id:uid(),name:'New barber',pay:'commission',rate:40,wage:0});save();render();},
-  delStaff:(el,id)=>{if(!confirm('Remove this barber? Past records stay.'))return;S.staff=S.staff.filter(s=>s.id!==id);save();render();},
+  delStaff:(el,id)=>{const st=staffById(id),T=today();
+    const upcoming=S.bookings.filter(b=>b.staffId===id&&b.status==='waiting'&&b.date>=T);
+    const rest=S.staff.filter(s=>s.id!==id),to=rest.find(s=>s.pay==='owner')||rest[0];
+    if(!confirm(`Remove ${st.name}? Past records and pay stay.`+(upcoming.length?` Their ${upcoming.length} upcoming customer${upcoming.length>1?'s':''} will move to ${to.name}.`:'')))return;
+    upcoming.forEach(b=>{b.staffId=to.id;});S.staff=rest;save();render();if(upcoming.length)toast(`${upcoming.length} moved to ${to.name}`);},
   export:doExport,import:()=>$('#importFile').click(),
   sample:()=>{if(hasSync()&&Sync.signedIn())return toast('Sign out first — sample data would mix with your real data');if(!confirm('Replace everything with sample data?'))return;S=sampleData();save();UI.date=today();render();},
   wipe:()=>{const all=hasSync()&&Sync.signedIn();
@@ -673,6 +704,6 @@ setInterval(()=>{const T=today();
   if(UI.tab==='today'&&!$('#sheet').classList.contains('open')&&!document.activeElement.matches('input,select'))render();},60000);
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
-<script src="sync.js?v=1.8"></script>
+<script src="sync.js?v=1.9"></script>
 </body>
 </html>
